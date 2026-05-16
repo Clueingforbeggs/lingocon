@@ -11,6 +11,10 @@ async function getLanguage(slug: string, userId: string | null) {
       name: true,
       slug: true,
       ownerId: true,
+      grammarPages: {
+        orderBy: { order: "asc" },
+        select: { id: true, title: true, slug: true },
+      },
     },
   })
 
@@ -50,7 +54,7 @@ export default async function NewArticlePage({
   }
 
   return (
-    <ArticleEditor languageId={language.id} languageSlug={slug} />
+    <ArticleEditor languageId={language.id} languageSlug={slug} grammarPages={language.grammarPages} />
   )
 }
 

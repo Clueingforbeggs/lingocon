@@ -175,10 +175,36 @@ function getInitialNodesAndEdges(languages: LanguageData[], currentUserId: strin
 function LanguageFamilyBuilderInner({ initialLanguages, currentUserId, onPendingChangesChange }: LanguageFamilyBuilderProps) {
   const router = useRouter()
   const reactFlowInstance = useReactFlow()
-  const { nodes: initNodes, edges: initEdges } = useMemo(() => getInitialNodesAndEdges(initialLanguages, currentUserId), [initialLanguages, currentUserId])
-  
+
+  // Defer the O(n²) layout computation to after the first paint so the
+  // skeleton clears quickly and the browser doesn't hang on mount.
+  const [isReady, setIsReady] = useState(false)
+  const { nodes: initNodes, edges: initEdges } = useMemo(
+    () => isReady ? getInitialNodesAndEdges(initialLanguages, currentUserId) : { nodes: [], edges: [] },
+    [isReady, initialLanguages, currentUserId]
+  )
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setIsReady(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
   const [nodes, setNodes, onNodesChange] = useNodesState(initNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initEdges)
+
+  // Sync nodes/edges when layout becomes ready
+  useEffect(() => {
+    if (isReady) {
+      const { nodes: n, edges: e } = getInitialNodesAndEdges(initialLanguages, currentUserId)
+      setNodes(n)
+      setEdges(e)
+      // Fit view after nodes settle
+      requestAnimationFrame(() => {
+        reactFlowInstance.fitView({ duration: 400, padding: 0.15 })
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady])
   
   const [isSaving, setIsSaving] = useState(false)
   const [pendingChanges, setPendingChanges] = useState<{ id: string; parentId: string | null }[]>([])
@@ -426,6 +452,18 @@ function LanguageFamilyBuilderInner({ initialLanguages, currentUserId, onPending
           <p className="text-sm text-muted-foreground">
             Create your first language in the dashboard, then come back here to build family trees by connecting ancestors to their daughter languages.
           </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show a lightweight pulse while layout is being computed
+  if (!isReady) {
+    return (
+      <div className="w-full h-full bg-secondary/10 flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-muted-foreground">Computing layout…</p>
         </div>
       </div>
     )

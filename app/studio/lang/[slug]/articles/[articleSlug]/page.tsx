@@ -11,6 +11,10 @@ async function getArticle(languageSlug: string, articleSlug: string, userId: str
       name: true,
       slug: true,
       ownerId: true,
+      grammarPages: {
+        orderBy: { order: "asc" },
+        select: { id: true, title: true, slug: true },
+      },
     },
   })
 
@@ -41,6 +45,7 @@ async function getArticle(languageSlug: string, articleSlug: string, userId: str
       content: true,
       coverImage: true,
       paradigmId: true,
+      published: true,
     },
   })
 
@@ -75,6 +80,7 @@ export default async function EditArticlePage({
       languageId={result.language.id}
       languageSlug={slug}
       article={result.article}
+      grammarPages={result.language.grammarPages}
     />
   )
 }

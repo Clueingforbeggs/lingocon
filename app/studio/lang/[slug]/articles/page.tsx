@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Plus, FileText, Calendar, User } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
 import { EmptyState } from "@/components/empty-state"
 
@@ -22,6 +23,7 @@ async function getLanguageWithArticles(slug: string, userId: string | null) {
           id: true,
           title: true,
           slug: true,
+          published: true,
           createdAt: true,
           author: {
             select: {
@@ -106,9 +108,20 @@ export default async function ArticlesPage({
               <Card className="p-5 hover:bg-secondary/30 transition-colors cursor-pointer">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg truncate mb-1">
-                      {article.title}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-lg truncate">
+                        {article.title}
+                      </h3>
+                      {article.published ? (
+                        <Badge className="shrink-0 bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/20 hover:bg-green-500/20">
+                          Published
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 dark:text-amber-400">
+                          Draft
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <User className="h-3.5 w-3.5" />

@@ -26,7 +26,7 @@ interface LanguageData {
   externalAncestry?: string | null
   familyId?: string | null
   family?: { id: string; name: string } | null
-  owner: { name: string }
+  owner: { name: string | null }
   _count: { dictionaryEntries: number }
 }
 
@@ -42,7 +42,7 @@ interface MapNode {
   flagUrl: string | null
   count: number
   familySize: number
-  ownerName: string
+  ownerName: string | null
 }
 
 interface MapEdge {
@@ -108,7 +108,7 @@ function buildMapData(languages: LanguageData[]) {
   }
 
   // Find roots
-  const trueRoots: Array<{ id: string; name: string; isVirtual: boolean; flagUrl: string | null; count: number; ownerName: string; slug: string }> = []
+  const trueRoots: Array<{ id: string; name: string; isVirtual: boolean; flagUrl: string | null; count: number; ownerName: string | null; slug: string }> = []
 
   virtualRootsMap.forEach(v => {
     trueRoots.push({ id: v.id, name: v.name, isVirtual: true, flagUrl: null, count: 0, ownerName: "", slug: "" })

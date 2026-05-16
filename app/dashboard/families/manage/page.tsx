@@ -70,7 +70,7 @@ export default async function ManageFamiliesPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Navbar user={user as any} isDevMode={isDevMode} />
+      <Navbar user={user} isDevMode={isDevMode} />
       <div className="h-14 shrink-0" />
 
       <main className="flex-1 container max-w-5xl mx-auto py-8 px-4">

@@ -169,7 +169,7 @@ export default async function PublicLanguagePage({
     familyTree = await getLanguageFamilyTree(language.id)
   } catch {}
 
-  const isOwner = userId === (language as any).ownerId
+  const isOwner = userId === language.ownerId
 
   const sections = [
     {

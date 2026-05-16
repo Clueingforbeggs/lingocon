@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table2, Info } from "lucide-react"
 import { EmptyState } from "@/components/empty-state"
 import { Badge } from "@/components/ui/badge"
+import { parseParadigmSlots } from "@/lib/validations/paradigm"
 
 async function getLanguage(slug: string) {
   const language = await prisma.language.findUnique({
@@ -82,10 +83,10 @@ export default async function PublicParadigmsPage({
       ) : (
         <div className="grid gap-6">
           {language.paradigms.map((paradigm) => {
-            const slots = paradigm.slots as any
-            const rows = Array.isArray(slots?.rows) ? slots.rows : []
-            const columns = Array.isArray(slots?.columns) ? slots.columns : []
-            const cells = slots?.cells || {}
+            const slots = parseParadigmSlots(paradigm.slots)
+            const rows = slots.rows
+            const columns = slots.columns
+            const cells = slots.cells
 
             return (
               <Card key={paradigm.id} className="overflow-hidden border-border/60 shadow-sm">

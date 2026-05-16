@@ -32,6 +32,7 @@ import {
     VOWEL_BACKNESS,
     IPA_VOWEL_MAP,
 } from "@/lib/data/ipa-data"
+import { languageMetadataSchema } from "@/lib/validations/language"
 import type { Language, ScriptSymbol } from "@prisma/client"
 
 
@@ -41,9 +42,9 @@ interface PhonologyViewProps {
 }
 
 export function PhonologyView({ language, symbols }: PhonologyViewProps) {
-    const metadata = (language.metadata as any) || {}
-    const [syllableStructure, setSyllableStructure] = useState(metadata.syllableStructure || "")
-    const [allophonyRules, setAllophonyRules] = useState(metadata.allophonyRules || "")
+    const metadata = languageMetadataSchema.parse(language.metadata ?? {})
+    const [syllableStructure, setSyllableStructure] = useState(metadata.syllableStructure ?? "")
+    const [allophonyRules, setAllophonyRules] = useState(metadata.allophonyRules ?? "")
     const [isSaving, setIsSaving] = useState(false)
 
     // Manual override state

@@ -33,7 +33,9 @@ interface ArticleEditorProps {
     content: any
     coverImage?: string | null
     paradigmId?: string | null
+    published?: boolean
   }
+  grammarPages?: { id: string; title: string; slug: string }[]
 }
 
 function generateSlug(title: string): string {
@@ -44,7 +46,7 @@ function generateSlug(title: string): string {
     .substring(0, 100)
 }
 
-export function ArticleEditor({ languageId, languageSlug, article }: ArticleEditorProps) {
+export function ArticleEditor({ languageId, languageSlug, article, grammarPages = [] }: ArticleEditorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -57,6 +59,7 @@ export function ArticleEditor({ languageId, languageSlug, article }: ArticleEdit
     slug: article?.slug || "",
   })
   const [coverImage, setCoverImage] = useState<string | null>(article?.coverImage || null)
+  const [isPublished, setIsPublished] = useState(article?.published ?? false)
 
   const [content, setContent] = useState<any>(() => {
     if (!article?.content) {
@@ -99,6 +102,7 @@ export function ArticleEditor({ languageId, languageSlug, article }: ArticleEdit
           title: formData.title,
           content: content,
           coverImage: coverImage || undefined,
+          published: isPublished,
         }))
 
         const result = await updateArticle(String(article.id), sterilizedData)
@@ -117,6 +121,7 @@ export function ArticleEditor({ languageId, languageSlug, article }: ArticleEdit
           content: content,
           languageId,
           coverImage: coverImage || undefined,
+          published: isPublished,
         }))
         const result = await createArticle(sterilizedData)
 
@@ -224,6 +229,9 @@ export function ArticleEditor({ languageId, languageSlug, article }: ArticleEdit
               setActiveEditor(editor)
               setIsParadigmDialogOpen(true)
             }}
+            withWikiLinks
+            languageSlug={languageSlug}
+            grammarPages={grammarPages}
           />
         </Card>
 
@@ -242,10 +250,34 @@ export function ArticleEditor({ languageId, languageSlug, article }: ArticleEdit
             <div />
           )}
 
-          <Button type="submit" disabled={isPending}>
-            <Save className="mr-2 h-4 w-4" />
-            {isPending ? "Saving..." : article ? "Save Changes" : "Save Article"}
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                {isPublished ? "Public" : "Draft"}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isPublished}
+                onClick={() => setIsPublished(!isPublished)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 ${
+                  isPublished ? "bg-primary" : "bg-muted-foreground/30"
+                }`}
+                disabled={isPending}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                    isPublished ? "translate-x-4" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <Button type="submit" disabled={isPending}>
+              <Save className="mr-2 h-4 w-4" />
+              {isPending ? "Saving..." : article ? "Save Changes" : "Save Article"}
+            </Button>
+          </div>
         </div>
       </form>
 

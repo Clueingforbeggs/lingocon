@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import { PublicAlphabetView } from "./public-alphabet-view"
+import { languageMetadataSchema } from "@/lib/validations/language"
+
+export const revalidate = 3600
 
 async function getLanguage(slug: string) {
   const language = await prisma.language.findUnique({
@@ -49,8 +52,8 @@ export default async function AlphabetPage({
 
       <PublicAlphabetView
         symbols={language.scriptSymbols}
-        voiceId={(language.metadata as any)?.tts?.voiceId}
-        speed={(language.metadata as any)?.tts?.speed}
+        voiceId={languageMetadataSchema.parse(language.metadata ?? {}).tts?.voiceId}
+        speed={languageMetadataSchema.parse(language.metadata ?? {}).tts?.speed}
       />
     </div>
   )

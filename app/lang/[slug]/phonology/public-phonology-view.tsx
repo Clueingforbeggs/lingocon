@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { AudioWaveform, Info } from "lucide-react"
 import type { Language, ScriptSymbol } from "@prisma/client"
+import { languageMetadataSchema } from "@/lib/validations/language"
 
 // IPA consonant chart
 const CONSONANT_PLACES = [
@@ -150,12 +151,12 @@ interface PublicPhonologyViewProps {
 }
 
 export function PublicPhonologyView({ language, symbols }: PublicPhonologyViewProps) {
-    const metadata = (language.metadata as any) || {}
+    const metadata = languageMetadataSchema.parse(language.metadata ?? {})
 
     const ipaSymbols = useMemo(() => {
         // Use manual override if enabled
         const override = metadata.phonologyOverride
-        if (override?.enabled && (override.consonants?.length > 0 || override.vowels?.length > 0)) {
+        if (override?.enabled && ((override.consonants?.length ?? 0) > 0 || (override.vowels?.length ?? 0) > 0)) {
             return new Set<string>([...(override.consonants || []), ...(override.vowels || [])])
         }
 

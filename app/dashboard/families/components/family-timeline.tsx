@@ -152,7 +152,7 @@ export function FamilyTimeline({ languages, currentUserId }: TimelineProps) {
   const svgHeight = paddingTop + (maxLane + 1) * laneHeight + paddingBottom
 
   return (
-    <div className="h-full overflow-auto bg-card/50 rounded-lg border">
+    <div className="h-full overflow-auto bg-card/30">
       <svg
         width={totalWidth}
         height={svgHeight}

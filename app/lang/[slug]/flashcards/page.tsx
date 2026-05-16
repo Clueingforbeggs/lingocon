@@ -52,7 +52,7 @@ export default async function PublicFlashcardsPage({ params }: { params: Promise
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar user={user as any} isDevMode={isDevMode} />
+      <Navbar user={user} isDevMode={isDevMode} />
       <div className="h-14" />
       <div className="container mx-auto py-8 px-4">
         <FlashcardSession

@@ -5,6 +5,7 @@ import { DictionaryManager } from "./dictionary-manager"
 import { Prisma } from "@prisma/client"
 import { Suspense } from "react"
 import { EnhancedLoadingSkeleton } from "@/components/enhanced-loading-skeleton"
+import { languageMetadataSchema } from "@/lib/validations/language"
 
 const ITEMS_PER_PAGE = 20
 
@@ -36,11 +37,23 @@ async function getLanguageDetails(slug: string, userId: string | null) {
   return language
 }
 
+type SortOption = "lemma" | "createdAt" | "partOfSpeech" | "gloss"
+
+function getOrderBy(sort: SortOption): Prisma.DictionaryEntryOrderByWithRelationInput {
+  switch (sort) {
+    case "createdAt": return { createdAt: "desc" }
+    case "partOfSpeech": return { partOfSpeech: "asc" }
+    case "gloss": return { gloss: "asc" }
+    default: return { lemma: "asc" }
+  }
+}
+
 async function getDictionaryEntries(
   languageId: string,
   page: number,
   query: string,
-  field?: string
+  field?: string,
+  sort: SortOption = "lemma"
 ) {
   const skip = (page - 1) * ITEMS_PER_PAGE
 
@@ -69,7 +82,7 @@ async function getDictionaryEntries(
   const [entries, total] = await Promise.all([
     prisma.dictionaryEntry.findMany({
       where,
-      orderBy: { lemma: "asc" },
+      orderBy: getOrderBy(sort),
       take: ITEMS_PER_PAGE,
       skip,
     }),
@@ -88,7 +101,7 @@ export default async function DictionaryPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ page?: string; q?: string; f?: string }>
+  searchParams: Promise<{ page?: string; q?: string; f?: string; sort?: string }>
 }) {
   const userId = await getUserId()
 
@@ -97,11 +110,14 @@ export default async function DictionaryPage({
   }
 
   const { slug } = await params
-  const { page: pageParam, q: queryParam, f: fieldParam } = await searchParams
+  const { page: pageParam, q: queryParam, f: fieldParam, sort: sortParam } = await searchParams
 
   const page = Number(pageParam) || 1
   const query = queryParam || ""
   const field = fieldParam || ""
+  const sort = (["lemma", "createdAt", "partOfSpeech", "gloss"].includes(sortParam ?? "")
+    ? sortParam
+    : "lemma") as SortOption
 
   const language = await getLanguageDetails(slug, userId)
 
@@ -113,7 +129,8 @@ export default async function DictionaryPage({
     language.id,
     page,
     query,
-    field
+    field,
+    sort
   )
 
   const isAudioEnabled = !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.AWS_REGION)
@@ -137,10 +154,11 @@ export default async function DictionaryPage({
           totalEntries={total}
           initialQuery={query}
           initialField={field}
+          initialSort={sort}
           enableAudio={isAudioEnabled}
-          ttsSettings={(language.metadata as any)?.tts}
+          ttsSettings={languageMetadataSchema.parse(language.metadata ?? {}).tts}
           allowsDiacritics={language.allowsDiacritics}
-          metadata={(language.metadata as Record<string, any>) || {}}
+          metadata={languageMetadataSchema.parse(language.metadata ?? {})}
           languageName={language.name}
         />
       </Suspense>

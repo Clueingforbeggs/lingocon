@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import { PhonologyView } from "./phonology-view"
+import { PhonemeFrequencyChart } from "@/components/phoneme-frequency-chart"
 
 async function getLanguageData(slug: string) {
     const language = await prisma.language.findUnique({
@@ -8,6 +9,10 @@ async function getLanguageData(slug: string) {
         include: {
             scriptSymbols: {
                 orderBy: { order: "asc" },
+            },
+            dictionaryEntries: {
+                select: { ipa: true },
+                where: { ipa: { not: null } },
             },
         },
     })
@@ -40,6 +45,11 @@ export default async function PhonologyPage({
             <PhonologyView
                 language={language}
                 symbols={language.scriptSymbols}
+            />
+
+            <PhonemeFrequencyChart
+                ipaList={language.dictionaryEntries.map(e => e.ipa)}
+                knownPhonemes={language.scriptSymbols.map(s => s.ipa).filter((v): v is string => !!v)}
             />
         </div>
     )

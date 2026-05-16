@@ -31,7 +31,8 @@ import { WordOfTheDay } from "@/components/word-of-the-day"
 import { SurveyBanner } from "@/components/survey-banner"
 import { LingoConUniverseMap } from "@/components/landing/universe-map"
 
-export const dynamic = "force-dynamic"
+// Revalidate every 10 minutes — user sessions are handled client-side.
+export const revalidate = 600
 
 import type { Metadata } from "next"
 

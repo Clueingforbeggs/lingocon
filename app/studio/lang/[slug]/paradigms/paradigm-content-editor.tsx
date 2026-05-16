@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { parseParadigmSlots } from "@/lib/validations/paradigm"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -27,7 +28,7 @@ interface ParadigmContentEditorProps {
   paradigm: {
     id: string
     name: string
-    slots: any
+    slots: unknown
   } | null
   onSave: (id: string, cells: Record<string, string>) => Promise<void>
   isPending: boolean
@@ -42,16 +43,19 @@ export function ParadigmContentEditor({
 }: ParadigmContentEditorProps) {
   const [cells, setCells] = useState<Record<string, string>>({})
 
-  // Initialize cells when paradigm changes
-  if (paradigm && Object.keys(cells).length === 0 && open) {
-    setCells(paradigm.slots.cells || {})
-  }
+  // Reinitialise cells whenever the dialog opens or the paradigm changes.
+  // Using useEffect avoids the anti-pattern of setting state during render.
+  useEffect(() => {
+    if (open && paradigm) {
+      setCells(parseParadigmSlots(paradigm.slots).cells)
+    }
+  }, [open, paradigm?.id])
 
   if (!paradigm) return null
 
-  const slots = paradigm.slots
-  const rows = Array.isArray(slots.rows) ? slots.rows : []
-  const columns = Array.isArray(slots.columns) ? slots.columns : []
+  const slots = parseParadigmSlots(paradigm.slots)
+  const rows = slots.rows
+  const columns = slots.columns
 
   const handleCellChange = (rowIdx: number, colIdx: number, value: string) => {
     const key = `${rowIdx}-${colIdx}`
@@ -82,7 +86,7 @@ export function ParadigmContentEditor({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[150px] bg-muted/50"></TableHead>
-                  {columns.map((col: string, idx: number) => (
+                  {columns.map((col, idx) => (
                     <TableHead key={idx} className="bg-muted/50 font-semibold min-w-[150px]">
                       {col}
                     </TableHead>
@@ -90,7 +94,7 @@ export function ParadigmContentEditor({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row: string, rowIdx: number) => (
+                {rows.map((row, rowIdx) => (
                   <TableRow key={rowIdx}>
                     <TableCell className="font-medium bg-muted/20">
                       {row}

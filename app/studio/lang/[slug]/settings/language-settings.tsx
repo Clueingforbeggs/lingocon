@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { languageMetadataSchema } from "@/lib/validations/language"
 import {
   Select,
   SelectContent,
@@ -47,6 +48,7 @@ interface LanguageSettingsProps {
     fontScale: number
     allowsDiacritics?: boolean
     allowForking?: boolean
+    metadata?: unknown
   }
   languageSlug: string
   dictionaryEntries: {
@@ -55,23 +57,6 @@ interface LanguageSettingsProps {
     ipa: string | null
   }[]
   isOwner?: boolean
-}
-
-interface LanguageWithMetadata {
-  id: string
-  name: string
-  slug: string
-  description: string | null
-  visibility: string
-  flagUrl: string | null
-  discordUrl?: string | null
-  telegramUrl?: string | null
-  websiteUrl?: string | null
-  fontUrl?: string | null
-  fontFamily?: string | null
-  fontScale: number
-  allowsDiacritics?: boolean
-  metadata: any
 }
 
 const availableVoices = [
@@ -100,7 +85,7 @@ export function LanguageSettings({ language, languageSlug, dictionaryEntries, is
   const [previewIpa, setPreviewIpa] = useState("")
 
 
-  const typedLanguage = language as unknown as LanguageWithMetadata
+  const parsedMetadata = languageMetadataSchema.parse(language.metadata ?? {})
 
   const [formData, setFormData] = useState({
     name: language.name,
@@ -113,10 +98,10 @@ export function LanguageSettings({ language, languageSlug, dictionaryEntries, is
     fontUrl: language.fontUrl || "",
     fontFamily: language.fontFamily || "",
     fontScale: language.fontScale || 1.0,
-    allowsDiacritics: (language as any).allowsDiacritics ?? false,
-    allowForking: (language as any).allowForking ?? false,
-    ttsVoice: typedLanguage.metadata?.tts?.voiceId || "Joanna",
-    ttsSpeed: typedLanguage.metadata?.tts?.speed || "slow",
+    allowsDiacritics: language.allowsDiacritics ?? false,
+    allowForking: language.allowForking ?? false,
+    ttsVoice: parsedMetadata.tts?.voiceId ?? "Joanna",
+    ttsSpeed: parsedMetadata.tts?.speed ?? "slow",
   })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -140,7 +125,7 @@ export function LanguageSettings({ language, languageSlug, dictionaryEntries, is
         allowsDiacritics: Boolean(formData.allowsDiacritics),
         allowForking: Boolean(formData.allowForking),
         metadata: {
-          ...(typedLanguage.metadata || {}),
+          ...parsedMetadata,
           tts: {
             voiceId: formData.ttsVoice,
             speed: formData.ttsSpeed,

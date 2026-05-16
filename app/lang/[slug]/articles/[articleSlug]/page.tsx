@@ -170,7 +170,7 @@ export default async function PublicArticlePage({
             prose-headings:font-serif prose-headings:font-medium
             prose-a:text-primary prose-a:no-underline hover:prose-a:underline
             prose-img:rounded-xl">
-            <GrammarContent content={article.content} />
+            <GrammarContent content={article.content} languageSlug={slug} />
           </div>
         </article>
       </div>

@@ -18,20 +18,26 @@ export default async function PublicFamiliesPage() {
   const session = await auth()
   const isDevMode = process.env.DEV_MODE === "true"
 
+  const userId = session?.user?.id ?? null
+
+  const languageSelect = {
+    id: true,
+    name: true,
+    slug: true,
+    flagUrl: true,
+    parentLanguageId: true,
+    externalAncestry: true,
+    familyId: true,
+    family: { select: { id: true, name: true } },
+    owner: { select: { name: true } },
+    _count: { select: { dictionaryEntries: true } },
+  } as const
+
   const languages = await prisma.language.findMany({
-    where: { visibility: "PUBLIC" },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      flagUrl: true,
-      parentLanguageId: true,
-      externalAncestry: true,
-      familyId: true,
-      family: { select: { id: true, name: true } },
-      owner: { select: { name: true } },
-      _count: { select: { dictionaryEntries: true } },
-    },
+    where: userId
+      ? { OR: [{ visibility: "PUBLIC" }, { ownerId: userId }] }
+      : { visibility: "PUBLIC" },
+    select: languageSelect,
     orderBy: { createdAt: "asc" },
   })
 
@@ -45,14 +51,13 @@ export default async function PublicFamiliesPage() {
     : null
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navbar user={user as any} isDevMode={isDevMode} />
-      <div className="h-14 shrink-0" />
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
+      <Navbar user={user} isDevMode={isDevMode} />
 
-      <main className="flex-1 relative flex flex-col">
+      <main className="flex-1 overflow-hidden" style={{ paddingTop: "3.5rem" }}>
         {languages.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-4 max-w-md">
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center space-y-4 max-w-md px-6">
               <div className="h-20 w-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
@@ -67,8 +72,8 @@ export default async function PublicFamiliesPage() {
             </div>
           </div>
         ) : (
-          <div className="absolute inset-0">
-            <LingoConUniverseMap languages={languages as any} />
+          <div className="w-full h-full">
+            <LingoConUniverseMap languages={languages} />
           </div>
         )}
       </main>

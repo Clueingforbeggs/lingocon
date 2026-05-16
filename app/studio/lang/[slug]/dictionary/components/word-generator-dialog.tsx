@@ -14,9 +14,10 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sparkles, Plus, RefreshCw, Copy, Check, Info } from "lucide-react"
-import { generateWords, parseSyllableStructure } from "@/lib/utils/word-generator"
+import { generateWords, parseSyllableStructure, buildPhonemeWeights } from "@/lib/utils/word-generator"
 import { toast } from "sonner"
 import type { ScriptSymbol } from "@prisma/client"
+import type { LanguageMetadata } from "@/lib/validations/language"
 
 // Same IPA maps from phonology-view (consonants and vowels)
 const IPA_CONSONANTS = new Set([
@@ -80,7 +81,7 @@ interface WordGeneratorDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     symbols: ScriptSymbol[]
-    metadata: Record<string, any>
+    metadata: LanguageMetadata
     existingLemmas: string[]
     onAddWord: (word: string) => void
 }
@@ -116,7 +117,7 @@ export function WordGeneratorDialog({
         const seenV = new Set<string>()
 
         for (const sym of symbols) {
-            const ipa = (sym as any).ipa
+            const ipa = sym.ipa
             if (!ipa) continue
             const classified = classifyIPA(ipa)
             for (const c of classified.consonants) {
@@ -135,6 +136,13 @@ export function WordGeneratorDialog({
     const slots = useMemo(() => parseSyllableStructure(syllableStructure), [syllableStructure])
     const hasPhonemes = consonants.length > 0 || vowels.length > 0
 
+    // Build phoneme frequency weights from the existing lexicon so generated words
+    // reflect the language's natural phoneme distribution.
+    const phonemeWeights = useMemo(
+        () => buildPhonemeWeights(existingLemmas, [...consonants, ...vowels]),
+        [existingLemmas, consonants, vowels]
+    )
+
     const handleGenerate = () => {
         if (!hasPhonemes) {
             toast.error("No phonemes found. Add script symbols with IPA values first.")
@@ -149,6 +157,7 @@ export function WordGeneratorDialog({
             maxSyllables,
             count,
             existingWords: new Set(existingLemmas),
+            phonemeWeights: existingLemmas.length >= 10 ? phonemeWeights : undefined,
         })
 
         setGeneratedWords(words)

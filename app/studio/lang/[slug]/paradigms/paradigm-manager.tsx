@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { createParadigm, updateParadigm, deleteParadigm } from "@/app/actions/paradigm"
+import { createParadigm, updateParadigm, deleteParadigm, cloneParadigm } from "@/app/actions/paradigm"
+import { parseParadigmSlots } from "@/lib/validations/paradigm"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Pencil, Trash2, Plus, Info } from "lucide-react"
+import { Pencil, Trash2, Plus, Info, Copy } from "lucide-react"
 import { IPASpeaker } from "@/components/ipa-speaker"
 import { looksLikeIPA, extractIPA } from "@/lib/utils/ipa-detection"
 import { EmptyState } from "@/components/empty-state"
@@ -114,11 +115,11 @@ export function ParadigmManager({ languageId, paradigms: initialParadigms }: Par
 
   const handleEdit = (paradigm: Paradigm) => {
     setEditingParadigm(paradigm)
-    const slots = paradigm.slots as any
+    const slots = parseParadigmSlots(paradigm.slots)
     setFormData({
       name: paradigm.name,
-      rows: Array.isArray(slots.rows) ? slots.rows.join("\n") : "",
-      columns: Array.isArray(slots.columns) ? slots.columns.join("\n") : "",
+      rows: slots.rows.join("\n"),
+      columns: slots.columns.join("\n"),
       notes: paradigm.notes || "",
     })
     setIsEditOpen(true)
@@ -141,8 +142,8 @@ export function ParadigmManager({ languageId, paradigms: initialParadigms }: Par
         cells: rows.reduce((acc, row, rowIdx) => {
           columns.forEach((col, colIdx) => {
             const key = `${rowIdx}-${colIdx}`
-            const existingSlots = editingParadigm.slots as any
-            acc[key] = existingSlots?.cells?.[key] || ""
+            const existingSlots = parseParadigmSlots(editingParadigm.slots)
+            acc[key] = existingSlots.cells[key] ?? ""
           })
           return acc
         }, {} as Record<string, string>),
@@ -327,10 +328,10 @@ export function ParadigmManager({ languageId, paradigms: initialParadigms }: Par
       ) : (
         <div className="grid gap-6">
           {initialParadigms.map((paradigm) => {
-            const slots = paradigm.slots as any
-            const rows = Array.isArray(slots?.rows) ? slots.rows : []
-            const columns = Array.isArray(slots?.columns) ? slots.columns : []
-            const cells = slots?.cells || {}
+            const slots = parseParadigmSlots(paradigm.slots)
+            const rows = slots.rows
+            const columns = slots.columns
+            const cells = slots.cells
 
             return (
               <Card key={paradigm.id} className="overflow-hidden border-border/60 shadow-sm hover:shadow-md transition-shadow">
@@ -368,6 +369,24 @@ export function ParadigmManager({ languageId, paradigms: initialParadigms }: Par
                         title="Edit Structure"
                       >
                         <Pencil className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          const result = await cloneParadigm(paradigm.id, languageId)
+                          if ("error" in result) {
+                            toast.error(result.error)
+                          } else {
+                            toast.success(`Duplicated "${paradigm.name}"`)
+                            startTransition(() => router.refresh())
+                          }
+                        }}
+                        disabled={isPending}
+                        className="h-8 w-8 p-0"
+                        title="Duplicate Paradigm"
+                      >
+                        <Copy className="h-4 w-4 text-muted-foreground" />
                       </Button>
                       <Button
                         variant="ghost"

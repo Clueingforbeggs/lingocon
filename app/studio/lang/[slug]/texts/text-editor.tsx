@@ -33,6 +33,7 @@ interface TextEditorProps {
     title: string
     slug: string
     content: any
+    published?: boolean
     coverImage?: string | null
     paradigmId?: string | null
   }
@@ -75,6 +76,7 @@ export function TextEditor({ languageId, languageSlug, text }: TextEditorProps) 
   })
   const [paradigmId, setParadigmId] = useState<string | null>(text?.paradigmId || null)
   const [coverImage, setCoverImage] = useState<string | null>(text?.coverImage || null)
+  const [isPublished, setIsPublished] = useState(text?.published ?? false)
 
   const handleTitleChange = (value: string) => {
     setFormData((prev) => ({
@@ -127,6 +129,7 @@ export function TextEditor({ languageId, languageSlug, text }: TextEditorProps) 
         const sterilizedData = JSON.parse(JSON.stringify({
           title: formData.title,
           content: formData.content,
+          published: isPublished,
           paradigmId: paradigmId || undefined,
         }))
         if (coverImage !== undefined) {
@@ -148,6 +151,7 @@ export function TextEditor({ languageId, languageSlug, text }: TextEditorProps) 
           title: formData.title,
           type: "OTHER",
           content: formData.content,
+          published: isPublished,
           languageId,
           paradigmId: paradigmId || undefined,
         }))
@@ -324,10 +328,34 @@ export function TextEditor({ languageId, languageSlug, text }: TextEditorProps) 
             <div />
           )}
 
-          <Button type="submit" disabled={isPending}>
-            <Save className="mr-2 h-4 w-4" />
-            {isPending ? "Saving..." : text ? "Save Changes" : "Save Text"}
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                {isPublished ? "Public" : "Draft"}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isPublished}
+                onClick={() => setIsPublished(!isPublished)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 ${
+                  isPublished ? "bg-primary" : "bg-muted-foreground/30"
+                }`}
+                disabled={isPending}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                    isPublished ? "translate-x-4" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <Button type="submit" disabled={isPending}>
+              <Save className="mr-2 h-4 w-4" />
+              {isPending ? "Saving..." : text ? "Save Changes" : "Save Text"}
+            </Button>
+          </div>
         </div>
       </form>
 

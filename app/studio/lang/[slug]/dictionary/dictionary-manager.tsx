@@ -11,7 +11,14 @@ import {
   deleteAllDictionaryEntries,
 } from "@/app/actions/dictionary-entry"
 import { Button } from "@/components/ui/button"
-import { Download, Upload, Edit, Plus, Trash2, Sparkles, Languages, Table2 } from "lucide-react"
+import { Download, Upload, Edit, Plus, Trash2, Sparkles, Languages, Table2, ArrowUpDown } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { BulkEdit } from "@/components/dictionary/bulk-edit"
 import { TransliterationToggle } from "@/components/transliteration-toggle"
 import { DictionarySearch } from "./components/dictionary-search"
@@ -33,6 +40,7 @@ import { FeatureHighlight } from "@/components/feature-highlight"
 import { ContextualHelp } from "@/components/contextual-help"
 import { EnhancedLoadingSkeleton } from "@/components/enhanced-loading-skeleton"
 import type { DictionaryEntry, ScriptSymbol } from "@prisma/client"
+import type { LanguageMetadata } from "@/lib/validations/language"
 
 interface DictionaryManagerProps {
   languageId: string
@@ -43,13 +51,14 @@ interface DictionaryManagerProps {
   totalEntries: number
   initialQuery: string
   initialField: string
+  initialSort?: string
   enableAudio: boolean
   ttsSettings?: {
     voiceId: string
     speed: string
   }
   allowsDiacritics?: boolean
-  metadata?: Record<string, any>
+  metadata?: LanguageMetadata
   languageName?: string
 }
 
@@ -62,6 +71,7 @@ export function DictionaryManager({
   totalEntries,
   initialQuery,
   initialField,
+  initialSort = "lemma",
   enableAudio,
   ttsSettings,
   allowsDiacritics = false,
@@ -166,6 +176,16 @@ export function DictionaryManager({
   const handlePageChange = useCallback((page: number) => {
     updateUrl(page, initialQuery)
   }, [updateUrl, initialQuery])
+
+  const handleSort = useCallback((sort: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (sort && sort !== "lemma") params.set("sort", sort)
+    else params.delete("sort")
+    params.delete("page")
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
+  }, [pathname, router, searchParams])
 
   const handleCreate = async (data: any) => {
     // Use JSON.parse(JSON.stringify()) to ensure a strictly plain object for the Server Action
@@ -399,6 +419,19 @@ export function DictionaryManager({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <Select defaultValue={initialSort} onValueChange={handleSort}>
+            <SelectTrigger className="h-9 w-[160px] gap-1 text-sm">
+              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <SelectValue placeholder="Sort by…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="lemma">A → Z (lemma)</SelectItem>
+              <SelectItem value="gloss">A → Z (gloss)</SelectItem>
+              <SelectItem value="createdAt">Newest first</SelectItem>
+              <SelectItem value="partOfSpeech">Part of speech</SelectItem>
+            </SelectContent>
+          </Select>
+
           <TransliterationToggle
             onToggle={setShowLatin}
             defaultShowLatin={showLatin}

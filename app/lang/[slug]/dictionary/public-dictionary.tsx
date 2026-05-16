@@ -17,13 +17,14 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Search, BookOpen, Link2, StickyNote, ArrowLeftRight, Tag } from "lucide-react"
+import { Search, BookOpen, Link2, StickyNote, ArrowLeftRight, Tag, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TransliterationToggle } from "@/components/transliteration-toggle"
 import { transliterateToLatin } from "@/lib/utils/transliterate"
 import { IPASpeaker } from "@/components/ipa-speaker"
 import { ExampleSentences } from "@/components/dictionary/example-sentences"
 import { EtymologyTree } from "@/components/dictionary/etymology-tree"
+import { getPublicDictionaryEntry } from "@/app/actions/dictionary-entry"
 import type { DictionaryEntry, ScriptSymbol, ExampleSentence } from "@prisma/client"
 
 type DictionaryEntryWithExamples = DictionaryEntry & {
@@ -31,7 +32,7 @@ type DictionaryEntryWithExamples = DictionaryEntry & {
 }
 
 interface PublicDictionaryProps {
-  entries: DictionaryEntryWithExamples[]
+  entries: DictionaryEntry[]
   symbols: ScriptSymbol[]
   voiceId?: string
   speed?: string
@@ -41,8 +42,20 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
   const [searchQuery, setSearchQuery] = useState("")
   const [showLatin, setShowLatin] = useState(false)
   const [selectedEntry, setSelectedEntry] = useState<DictionaryEntryWithExamples | null>(null)
+  const [isLoadingEntry, setIsLoadingEntry] = useState(false)
   const [reversed, setReversed] = useState(false)
   const [activeTag, setActiveTag] = useState<string | null>(null)
+
+  const openEntry = async (entry: DictionaryEntry) => {
+    // Optimistically show what we have while fetching details
+    setSelectedEntry({ ...entry, exampleSentences: [] })
+    setIsLoadingEntry(true)
+    const result = await getPublicDictionaryEntry(entry.id)
+    setIsLoadingEntry(false)
+    if ('success' in result) {
+      setSelectedEntry(result.data as DictionaryEntryWithExamples)
+    }
+  }
 
   const handleTagClick = (tag: string) => {
     setActiveTag(tag)
@@ -102,13 +115,13 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
     return results
   }, [entries, searchQuery, reversed, activeTag])
 
-  // Check if entry has additional details
-  const hasDetails = (entry: DictionaryEntryWithExamples) => {
-    return (
+  // Check if entry has additional details (example sentences are unknown at this point,
+  // so we show the dot indicator for any entry that has at least one other detail field)
+  const hasDetails = (entry: DictionaryEntry) => {
+    return !!(
       entry.etymology ||
       entry.notes ||
-      (Array.isArray(entry.relatedWords) && (entry.relatedWords as string[]).length > 0) ||
-      entry.exampleSentences.length > 0
+      (Array.isArray(entry.relatedWords) && (entry.relatedWords as string[]).length > 0)
     )
   }
 
@@ -193,8 +206,8 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
                   return (
                     <TableRow
                       key={entry.id}
-                      className={entryHasDetails ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
-                      onClick={() => entryHasDetails && setSelectedEntry(entry)}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => openEntry(entry)}
                     >
                       <TableCell className="font-medium">
                         <span className={!showLatin ? "font-custom-script text-lg" : ""}>
@@ -305,11 +318,8 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
                           variant="outline"
                           className="font-custom-script cursor-pointer hover:bg-muted/80 transition-colors"
                           onClick={() => {
-                            // Find and select the related entry
                             const relatedEntry = entries.find(e => e.lemma === word)
-                            if (relatedEntry) {
-                              setSelectedEntry(relatedEntry)
-                            }
+                            if (relatedEntry) openEntry(relatedEntry)
                           }}
                         >
                           {word}
@@ -362,20 +372,25 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
                   entry={selectedEntry}
                   allEntries={entries}
                   onSelectEntry={(e) => {
-                    const fullEntry = entries.find(x => x.id === e.id)
-                    if (fullEntry) setSelectedEntry(fullEntry)
+                    const base = entries.find(x => x.id === e.id)
+                    if (base) openEntry(base)
                   }}
                 />
 
-                {/* Example Sentences */}
-                {selectedEntry.exampleSentences.length > 0 && (
+                {/* Example Sentences / loading */}
+                {isLoadingEntry ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading details…
+                  </div>
+                ) : selectedEntry.exampleSentences.length > 0 ? (
                   <ExampleSentences
                     examples={selectedEntry.exampleSentences}
                     dictionaryEntryId={selectedEntry.id}
                     languageId={selectedEntry.languageId}
                     canEdit={false}
                   />
-                )}
+                ) : null}
               </div>
             </>
           )}

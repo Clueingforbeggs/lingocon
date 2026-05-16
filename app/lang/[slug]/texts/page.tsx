@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { BookMarked, FileText, User, ArrowRight } from "lucide-react"
+import { documentToPlainText } from "@/lib/utils/tiptap-text"
 
 async function getLanguageWithTexts(slug: string) {
   const language = await prisma.language.findUnique({
@@ -42,27 +43,11 @@ async function getLanguageWithTexts(slug: string) {
   return language
 }
 
-function getWordCount(content: string | null | undefined): number {
-  if (!content || typeof content !== 'string') return 0
-  return content.split(/\s+/).filter(Boolean).length
-}
-
-function getContentPreview(content: any): string {
-  if (!content) return ""
-  if (typeof content === 'string') {
-    return content.substring(0, 200)
-  }
-  // If it's JSON, try to extract text
-  const jsonString = JSON.stringify(content)
-  return jsonString.substring(0, 200)
-}
-
-function getContentLength(content: any): number {
-  if (!content) return 0
-  if (typeof content === 'string') {
-    return content.length
-  }
-  return JSON.stringify(content).length
+function getTextStats(content: unknown): { words: number; excerpt: string } {
+  const text = documentToPlainText(content)
+  const words = text.length > 0 ? text.split(/\s+/).length : 0
+  const excerpt = text.length > 180 ? text.slice(0, 180).trimEnd() + "…" : text
+  return { words, excerpt }
 }
 
 export default async function PublicTextsPage({
@@ -96,7 +81,9 @@ export default async function PublicTextsPage({
         </Card>
       ) : (
         <div className="grid gap-4">
-          {language.texts.map((text) => (
+          {language.texts.map((text) => {
+            const { words, excerpt } = getTextStats(text.content)
+            return (
             <Link
               key={text.id}
               href={`/lang/${slug}/texts/${text.slug}`}
@@ -107,14 +94,15 @@ export default async function PublicTextsPage({
                     <h3 className="font-serif font-medium text-xl line-clamp-1 group-hover:text-rose-600 transition-colors">
                       {text.title}
                     </h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
-                      {getContentPreview(text.content)}
-                      {getContentLength(text.content) > 200 ? "..." : ""}
-                    </p>
+                    {excerpt && (
+                      <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
+                        {excerpt}
+                      </p>
+                    )}
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mt-4">
                       <span className="flex items-center gap-1.5">
                         <FileText className="h-3.5 w-3.5" />
-                        {getWordCount(typeof text.content === 'string' ? text.content : JSON.stringify(text.content)).toLocaleString()} words
+                        {words > 0 ? `${words.toLocaleString()} words` : "No content"}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <User className="h-3.5 w-3.5" />
@@ -126,7 +114,8 @@ export default async function PublicTextsPage({
                 </div>
               </Card>
             </Link>
-          ))}
+            )
+          })}
         </div>
       )}
 

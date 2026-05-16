@@ -138,10 +138,10 @@ export default async function SettingsPage({
       <ParentLanguageCard
         languageId={language.id}
         currentParentId={language.parentLanguageId || null}
-        initialParent={(language as any).parentLanguage}
+        initialParent={language.parentLanguage}
         initialExternalAncestry={language.externalAncestry}
-        initialFamilyId={(language as any).familyId || null}
-        initialFamily={(language as any).family || null}
+        initialFamilyId={language.familyId ?? null}
+        initialFamily={language.family ?? null}
         families={families}
         userLanguages={userLanguages}
         descendantIds={descendantIds}

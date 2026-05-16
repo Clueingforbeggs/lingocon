@@ -33,72 +33,64 @@ async function getPublicLanguages(sortBy: SortOption = "recent", page: number = 
   const pageSize = 20
   const skip = (page - 1) * pageSize
 
-  const where: any = {
-    visibility: "PUBLIC",
-  }
+  const searchClause = query
+    ? { OR: [
+        { name: { contains: query, mode: "insensitive" as const } },
+        { description: { contains: query, mode: "insensitive" as const } },
+      ] }
+    : {}
 
-  if (query) {
-    where.OR = [
-      { name: { contains: query, mode: "insensitive" } },
-      { description: { contains: query, mode: "insensitive" } },
-    ]
-  }
+  const where = { visibility: "PUBLIC" as const, ...searchClause }
+
+  const sharedSelect = {
+    id: true,
+    name: true,
+    slug: true,
+    description: true,
+    flagUrl: true,
+    fontUrl: true,
+    fontFamily: true,
+    fontScale: true,
+    createdAt: true,
+    updatedAt: true,
+    visibility: true,
+    metadata: true,
+    discordUrl: true,
+    telegramUrl: true,
+    websiteUrl: true,
+    ownerId: true,
+    allowsDiacritics: true,
+    allowForking: true,
+    parentLanguageId: true,
+    externalAncestry: true,
+    familyId: true,
+    owner: {
+      select: { id: true, name: true, image: true },
+    },
+    _count: {
+      select: {
+        scriptSymbols: true,
+        grammarPages: true,
+        dictionaryEntries: true,
+        favorites: true,
+      },
+    },
+  } as const
 
   let languages
-  let total = await prisma.language.count({
-    where,
-  })
+  let total = await prisma.language.count({ where })
 
   if (sortBy === "entries") {
-    const allLanguages = await prisma.language.findMany({
+    // Use Prisma's relation-count ordering — no in-memory sort needed.
+    languages = await prisma.language.findMany({
       where,
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        flagUrl: true,
-        fontUrl: true,
-        fontFamily: true,
-        fontScale: true,
-        createdAt: true,
-        updatedAt: true,
-        visibility: true,
-        metadata: true,
-        discordUrl: true,
-        telegramUrl: true,
-        websiteUrl: true,
-        ownerId: true,
-        allowsDiacritics: true,
-        allowForking: true,
-        parentLanguageId: true,
-        externalAncestry: true,
-        familyId: true,
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-        _count: {
-          select: {
-            scriptSymbols: true,
-            grammarPages: true,
-            dictionaryEntries: true,
-            favorites: true,
-          },
-        },
-      },
+      select: sharedSelect,
+      orderBy: { dictionaryEntries: { _count: "desc" } },
+      take: pageSize,
+      skip,
     })
-
-    allLanguages.sort(
-      (a, b) => b._count.dictionaryEntries - a._count.dictionaryEntries
-    )
-
-    languages = allLanguages.slice(skip, skip + pageSize)
   } else {
-    let orderBy: any = {}
+    let orderBy: Record<string, "asc" | "desc"> = {}
     switch (sortBy) {
       case "recent":
         orderBy = { createdAt: "desc" }
@@ -113,44 +105,7 @@ async function getPublicLanguages(sortBy: SortOption = "recent", page: number = 
 
     languages = await prisma.language.findMany({
       where,
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        flagUrl: true,
-        fontUrl: true,
-        fontFamily: true,
-        fontScale: true,
-        createdAt: true,
-        updatedAt: true,
-        visibility: true,
-        metadata: true,
-        discordUrl: true,
-        telegramUrl: true,
-        websiteUrl: true,
-        ownerId: true,
-        allowsDiacritics: true,
-        allowForking: true,
-        parentLanguageId: true,
-        externalAncestry: true,
-        familyId: true,
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-        _count: {
-          select: {
-            scriptSymbols: true,
-            grammarPages: true,
-            dictionaryEntries: true,
-            favorites: true,
-          },
-        },
-      },
+      select: sharedSelect,
       orderBy,
       take: pageSize,
       skip,

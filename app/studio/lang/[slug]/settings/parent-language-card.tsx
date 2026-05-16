@@ -85,7 +85,15 @@ export function ParentLanguageCard({
 
   // Ancestry breadcrumb state
   const [ancestryPath, setAncestryPath] = useState<{ id: string; name: string; slug: string }[]>([])
-  const [childFamilies, setChildFamilies] = useState<{ id: string; name: string; slug: string; _count: { languages: number; childFamilies: number } }[]>([])
+  const [childFamilies, setChildFamilies] = useState<{
+    id: string
+    name: string
+    slug: string
+    description: string | null
+    type: string
+    visibility: string
+    _count: { languages: number; childFamilies: number }
+  }[]>([])
   const [showSubFamilies, setShowSubFamilies] = useState(false)
 
   // Parent language search
@@ -126,7 +134,7 @@ export function ParentLanguageCard({
     }
     getFamilyAncestryPath(familyId).then(setAncestryPath)
     getFamilyChildren(familyId).then((children) => {
-      setChildFamilies(children as any)
+      setChildFamilies(children)
       setShowSubFamilies(children.length > 0)
     })
   }, [familyId])

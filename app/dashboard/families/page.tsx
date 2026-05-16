@@ -26,7 +26,7 @@ export default async function FamiliesDashboardPage() {
 
   const userId = session?.user?.id || (await getDevUserId())
 
-  // Get all user's languages
+  // Load user's own languages
   const userLanguages = await prisma.language.findMany({
     where: { ownerId: userId },
     select: {
@@ -37,59 +37,54 @@ export default async function FamiliesDashboardPage() {
       externalAncestry: true,
       ownerId: true,
       createdAt: true,
-      _count: {
-        select: {
-          dictionaryEntries: true,
-        }
-      }
+      _count: { select: { dictionaryEntries: true } },
     },
-    orderBy: { createdAt: "asc" }
+    orderBy: { createdAt: "asc" },
   })
 
-  // Batch-fetch all missing ancestors in a single CTE query
+  // Batch-fetch ancestor languages referenced by the user's languages
   const userLanguageIds = userLanguages.map(l => l.id)
   const missingAncestorIds = await getAncestorIds(userLanguageIds)
 
-  let ancestors: typeof userLanguages & { owner?: any }[] = []
-  if (missingAncestorIds.length > 0) {
-    ancestors = await prisma.language.findMany({
-      where: { id: { in: missingAncestorIds } },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        parentLanguageId: true,
-        externalAncestry: true,
-        ownerId: true,
-        createdAt: true,
-        owner: { select: { id: true, name: true, image: true } },
-        _count: { select: { dictionaryEntries: true } }
-      }
-    })
-  }
+  const ancestors =
+    missingAncestorIds.length > 0
+      ? await prisma.language.findMany({
+          where: { id: { in: missingAncestorIds } },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentLanguageId: true,
+            externalAncestry: true,
+            ownerId: true,
+            createdAt: true,
+            owner: { select: { id: true, name: true, image: true } },
+            _count: { select: { dictionaryEntries: true } },
+          },
+        })
+      : []
 
   const allLanguages = [...userLanguages, ...ancestors]
 
   const isDevMode = process.env.DEV_MODE === "true"
-  const user = session?.user ? {
-    id: session.user.id!,
-    name: session.user.name,
-    email: session.user.email,
-    image: session.user.image,
-  } : null
+  const user = session?.user
+    ? {
+        id: session.user.id!,
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image,
+      }
+    : null
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
       <DashboardTour />
-      <Navbar user={user as any} isDevMode={isDevMode} />
-      <div className="h-14 shrink-0" />
+      <Navbar user={user} isDevMode={isDevMode} />
 
-      {/* Full bleed canvas area */}
-      <main className="flex-1 relative flex flex-col">
-        <div className="absolute inset-0">
-          <FamilyViewSwitcher initialLanguages={allLanguages} currentUserId={userId} />
-        </div>
-      </main>
+      {/* Canvas area — fills remaining viewport height */}
+      <div className="flex-1 flex flex-col overflow-hidden" style={{ paddingTop: "3.5rem" }}>
+        <FamilyViewSwitcher initialLanguages={allLanguages} currentUserId={userId!} />
+      </div>
     </div>
   )
 }

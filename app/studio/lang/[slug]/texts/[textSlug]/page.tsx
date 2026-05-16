@@ -39,6 +39,7 @@ async function getText(languageSlug: string, textSlug: string, userId: string | 
       title: true,
       slug: true,
       content: true,
+      published: true,
       coverImage: true,
       paradigmId: true,
     },
@@ -79,6 +80,7 @@ export default async function EditTextPage({
         title: result.text.title,
         slug: result.text.slug,
         content: typeof result.text.content === 'string' ? result.text.content : JSON.stringify(result.text.content || ''),
+        published: result.text.published,
         coverImage: result.text.coverImage,
         paradigmId: result.text.paradigmId,
       }}

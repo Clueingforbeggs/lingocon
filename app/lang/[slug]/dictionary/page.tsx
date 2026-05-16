@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import { PublicDictionary } from "./public-dictionary"
+import { languageMetadataSchema } from "@/lib/validations/language"
+
+// Cache public dictionary pages for 1 hour.
+export const revalidate = 3600
 
 async function getLanguage(slug: string) {
   const language = await prisma.language.findUnique({
@@ -10,11 +14,8 @@ async function getLanguage(slug: string) {
         orderBy: {
           lemma: "asc",
         },
-        include: {
-          exampleSentences: {
-            orderBy: { order: "asc" },
-          },
-        },
+        // Example sentences are intentionally excluded here — they're fetched on
+        // demand when the user opens an entry's detail sheet.
       },
       scriptSymbols: {
         orderBy: {
@@ -55,8 +56,8 @@ export default async function DictionaryPage({
       <PublicDictionary
         entries={language.dictionaryEntries}
         symbols={language.scriptSymbols}
-        voiceId={(language.metadata as any)?.tts?.voiceId}
-        speed={(language.metadata as any)?.tts?.speed}
+        voiceId={languageMetadataSchema.parse(language.metadata ?? {}).tts?.voiceId}
+        speed={languageMetadataSchema.parse(language.metadata ?? {}).tts?.speed}
       />
     </div>
   )

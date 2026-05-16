@@ -28,9 +28,23 @@ import {
   Info,
   Zap,
   FileText,
+  Wand2,
+  AlertTriangle,
 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { parseRules, applyPipeline, type SoundChangeResult } from "@/lib/utils/sound-change"
 import { updateLanguageMetadata } from "@/app/actions/language"
+import { applySoundChangesToDictionary } from "@/app/actions/apply-sound-changes"
 
 interface SoundChangeEditorProps {
   languageId: string
@@ -64,6 +78,7 @@ export function SoundChangeEditor({
 }: SoundChangeEditorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isApplying, setIsApplying] = useState(false)
 
   // Rule editor
   const [rulesText, setRulesText] = useState(savedRules || "")
@@ -97,10 +112,11 @@ export function SoundChangeEditor({
     return words.map((word) => applyPipeline(word, rules, vowels, consonants))
   }, [testWords, rules, vowels, consonants])
 
-  // Preview on dictionary entries
+  // Preview on dictionary entries (cap at 200 for performance)
+  const PREVIEW_LIMIT = 200
   const dictionaryResults = useMemo<SoundChangeResult[]>(() => {
     if (rules.length === 0) return []
-    return entries.slice(0, 100).map((entry) =>
+    return entries.slice(0, PREVIEW_LIMIT).map((entry) =>
       applyPipeline(entry.lemma, rules, vowels, consonants)
     )
   }, [entries, rules, vowels, consonants])
@@ -131,6 +147,26 @@ export function SoundChangeEditor({
     navigator.clipboard.writeText(text)
     toast.success("Copied to clipboard!")
   }, [dictionaryResults])
+
+  // Apply rules to the actual dictionary (irreversible)
+  const handleApplyToDictionary = useCallback(async () => {
+    setIsApplying(true)
+    try {
+      const result = await applySoundChangesToDictionary(languageId)
+      if ("error" in result) {
+        toast.error(result.error)
+      } else {
+        toast.success(
+          `Applied to dictionary: ${result.applied} entr${result.applied === 1 ? "y" : "ies"} updated, ${result.unchanged} unchanged`
+        )
+        startTransition(() => router.refresh())
+      }
+    } catch {
+      toast.error("Failed to apply sound changes")
+    } finally {
+      setIsApplying(false)
+    }
+  }, [languageId, router])
 
   // Export as TSV
   const handleExport = useCallback(() => {
@@ -200,6 +236,47 @@ export function SoundChangeEditor({
                 <span>V = vowel, C = consonant, # = boundary, ∅ = delete</span>
               </div>
             </div>
+            {rules.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full gap-2"
+                    disabled={isApplying || changedCount === 0}
+                  >
+                    <Wand2 className="h-3.5 w-3.5" />
+                    {isApplying ? "Applying…" : `Apply to Dictionary (${changedCount} changes)`}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-500" />
+                      Apply Sound Changes
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      <span className="block">
+                        This will permanently update <strong>{changedCount}</strong> lemma{changedCount !== 1 ? "s" : ""} in your dictionary
+                        using the currently <em>saved</em> sound change rules.
+                      </span>
+                      <span className="block text-amber-600 font-medium">
+                        This action cannot be undone. Consider forking (evolving) your language first to keep the original forms.
+                      </span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleApplyToDictionary}
+                      className="bg-amber-600 hover:bg-amber-700"
+                    >
+                      Apply Changes
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </CardContent>
         </Card>
 
@@ -319,6 +396,12 @@ export function SoundChangeEditor({
                 </Button>
               </div>
             </CardTitle>
+            {entries.length > PREVIEW_LIMIT && (
+              <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                Previewing first {PREVIEW_LIMIT} of {entries.length} entries. Apply to dictionary to process all.
+              </p>
+            )}
           </CardHeader>
           <CardContent>
             {rules.length === 0 ? (

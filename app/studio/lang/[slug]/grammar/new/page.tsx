@@ -17,11 +17,11 @@ async function getLanguage(slug: string, userId: string | null) {
         },
       },
       grammarPages: {
-        orderBy: {
-          order: "desc",
-        },
-        take: 1,
+        orderBy: { order: "asc" },
         select: {
+          id: true,
+          title: true,
+          slug: true,
           order: true,
         },
       },
@@ -62,13 +62,17 @@ export default async function NewGrammarPage({
     notFound()
   }
 
-  const nextOrder =
-    language.grammarPages.length > 0
-      ? language.grammarPages[0].order + 1
-      : 0
+  const maxOrder = language.grammarPages.reduce((max, p) => Math.max(max, p.order), -1)
+  const nextOrder = maxOrder + 1
 
   return (
-    <GrammarEditor languageId={language.id} languageSlug={slug} order={nextOrder} symbols={language.scriptSymbols} />
+    <GrammarEditor
+      languageId={language.id}
+      languageSlug={slug}
+      order={nextOrder}
+      symbols={language.scriptSymbols}
+      grammarPages={language.grammarPages.map(p => ({ id: p.id, title: p.title, slug: p.slug }))}
+    />
   )
 }
 

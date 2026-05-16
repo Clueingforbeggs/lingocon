@@ -27,12 +27,15 @@ interface GrammarPagesManagerProps {
   languageId: string
   languageSlug: string
   pages: GrammarPage[]
+  /** Map of page.id → word count, computed server-side */
+  wordCountsById?: Record<string, number>
 }
 
 export function GrammarPagesManager({
   languageId,
   languageSlug,
   pages: initialPages,
+  wordCountsById = {},
 }: GrammarPagesManagerProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -96,12 +99,15 @@ export function GrammarPagesManager({
                 <TableHead className="w-12">Order</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Slug</TableHead>
+                <TableHead className="w-24 text-right">Words</TableHead>
                 <TableHead>Updated</TableHead>
                 <TableHead className="w-32">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initialPages.map((page, index) => (
+              {initialPages.map((page, index) => {
+                const words = wordCountsById[page.id] ?? 0
+                return (
                 <TableRow key={page.id}>
                   <TableCell>
                     <div className="flex flex-col gap-1">
@@ -125,8 +131,20 @@ export function GrammarPagesManager({
                       </Button>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{page.title}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {page.title}
+                      {words === 0 && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                          empty
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="font-mono text-sm">{page.slug}</TableCell>
+                  <TableCell className="text-sm text-right tabular-nums text-muted-foreground">
+                    {words > 0 ? words.toLocaleString() : "—"}
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatDate(page.updatedAt)}
                   </TableCell>
@@ -149,7 +167,8 @@ export function GrammarPagesManager({
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                )
+              })}
             </TableBody>
           </Table>
         </Card>

@@ -31,7 +31,9 @@ import { cn } from "@/lib/utils"
 import { IGT } from "@/lib/tiptap/igt-extension"
 import { Paradigm } from "@/lib/tiptap/paradigm-extension"
 import { CustomFont } from "@/lib/tiptap/custom-font-extension"
+import { WikiLink } from "@/lib/tiptap/wiki-link-extension"
 import { IpaChartGenerator } from "@/components/ipa-chart-generator"
+import { WikiLinkDialog } from "@/components/wiki-link-dialog"
 import { useState } from "react"
 
 interface RichTextEditorProps {
@@ -45,7 +47,11 @@ interface RichTextEditorProps {
     onParadigmClick?: (editor: Editor) => void
     // IPA Chart
     withIpaChart?: boolean
-    symbols?: any[]
+    symbols?: { id: string; symbol: string; ipa: string | null; latin?: string | null; name: string | null; order?: number }[]
+    // Wiki-links between grammar pages
+    withWikiLinks?: boolean
+    languageSlug?: string
+    grammarPages?: { id: string; title: string; slug: string }[]
 }
 
 export function RichTextEditor({
@@ -58,8 +64,12 @@ export function RichTextEditor({
     onParadigmClick,
     withIpaChart = false,
     symbols = [],
+    withWikiLinks = false,
+    languageSlug = "",
+    grammarPages = [],
 }: RichTextEditorProps) {
     const [isIpaChartOpen, setIsIpaChartOpen] = useState(false)
+    const [isWikiLinkDialogOpen, setIsWikiLinkDialogOpen] = useState(false)
 
     const editor = useEditor({
         extensions: [
@@ -74,6 +84,7 @@ export function RichTextEditor({
             TableCell,
             ...(withIGT ? [IGT] : []),
             ...(withParadigm ? [Paradigm] : []),
+            ...(withWikiLinks ? [WikiLink.configure({ languageSlug })] : []),
         ],
         content,
         immediatelyRender: false,
@@ -326,7 +337,7 @@ export function RichTextEditor({
                 </Popover>
 
                 {/* Extended Features */}
-                {(withIGT || withParadigm) && <div className="w-px h-6 bg-border mx-1" />}
+                {(withIGT || withParadigm || withWikiLinks) && <div className="w-px h-6 bg-border mx-1" />}
 
                 {withIGT && (
                     <Button
@@ -356,6 +367,19 @@ export function RichTextEditor({
                     </Button>
                 )}
 
+                {withWikiLinks && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsWikiLinkDialogOpen(true)}
+                        disabled={disabled}
+                        title="Insert wiki-link — or type [[slug]] inline"
+                    >
+                        <span className="text-xs font-semibold text-primary">[[]]</span>
+                    </Button>
+                )}
+
                 {withIpaChart && (
                     <Button
                         type="button"
@@ -380,6 +404,17 @@ export function RichTextEditor({
                     symbols={symbols}
                     onInsert={(html) => {
                         editor.chain().focus().insertContent(html).run()
+                    }}
+                />
+            )}
+
+            {withWikiLinks && (
+                <WikiLinkDialog
+                    open={isWikiLinkDialogOpen}
+                    onOpenChange={setIsWikiLinkDialogOpen}
+                    grammarPages={grammarPages}
+                    onSelect={(slug, label) => {
+                        editor.chain().focus().insertWikiLink({ slug, label }).run()
                     }}
                 />
             )}

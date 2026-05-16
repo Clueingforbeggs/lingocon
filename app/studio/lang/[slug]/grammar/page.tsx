@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { GrammarPagesManager } from "./grammar-pages-manager"
+import { documentToPlainText } from "@/lib/utils/tiptap-text"
 
 async function getLanguage(slug: string, userId: string | null) {
   const language = await prisma.language.findUnique({
@@ -56,6 +57,16 @@ export default async function GrammarPage({
     notFound()
   }
 
+  // Compute per-page word counts server-side
+  const wordCountsById = new Map(
+    language.grammarPages.map((p) => {
+      const text = documentToPlainText(p.content)
+      const count = text.length > 0 ? text.split(/\s+/).length : 0
+      return [p.id, count]
+    })
+  )
+  const totalWords = Array.from(wordCountsById.values()).reduce((a, b) => a + b, 0)
+
   return (
     <div className="space-y-8">
       <div className="pb-6 border-b border-border/40 flex items-end justify-between gap-4">
@@ -65,15 +76,29 @@ export default async function GrammarPage({
             Create and organize grammar documentation pages
           </p>
         </div>
-        <Link href={`/studio/lang/${slug}/grammar/new`}>
-          <Button size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Page
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          {language.grammarPages.length > 0 && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {language.grammarPages.length} page{language.grammarPages.length !== 1 ? "s" : ""}
+              {" · "}
+              {totalWords.toLocaleString()} word{totalWords !== 1 ? "s" : ""}
+            </span>
+          )}
+          <Link href={`/studio/lang/${slug}/grammar/new`}>
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Page
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <GrammarPagesManager languageId={language.id} languageSlug={slug} pages={language.grammarPages} />
+      <GrammarPagesManager
+        languageId={language.id}
+        languageSlug={slug}
+        pages={language.grammarPages}
+        wordCountsById={Object.fromEntries(wordCountsById)}
+      />
     </div>
   )
 }

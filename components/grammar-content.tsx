@@ -9,16 +9,20 @@ import { TableHeader } from "@tiptap/extension-table-header"
 import { IGT } from "@/lib/tiptap/igt-extension"
 import { Paradigm } from "@/lib/tiptap/paradigm-extension"
 import { CustomFont } from "@/lib/tiptap/custom-font-extension"
+import { WikiLink } from "@/lib/tiptap/wiki-link-extension"
 import { IGTBlock } from "@/components/igt-block"
 import { ParadigmEmbed } from "@/components/paradigm-embed"
-import { useMemo } from "react"
+import { useMemo, useEffect, useRef } from "react"
+import { headingId } from "@/lib/utils/tiptap-headings"
 
 interface GrammarContentProps {
   content: any // TipTap JSON content
   className?: string
+  /** Needed to resolve [[wiki-link]] hrefs to /lang/{slug}/grammar/{pageSlug} */
+  languageSlug?: string
 }
 
-export function GrammarContent({ content, className }: GrammarContentProps) {
+export function GrammarContent({ content, className, languageSlug }: GrammarContentProps) {
   // Ensure content is in the right format for TipTap
   const processedContent = useMemo(() => {
     // If content is a string, wrap it in a proper TipTap JSON structure
@@ -57,19 +61,38 @@ export function GrammarContent({ content, className }: GrammarContentProps) {
       TableCell,
       IGT,
       Paradigm,
-      CustomFont
+      CustomFont,
+      WikiLink.configure({ languageSlug: languageSlug ?? "" }),
     ],
     content: processedContent as any,
     editable: false,
     immediatelyRender: false,
   })
 
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // After the editor renders, stamp id attributes on heading elements so
+  // the GrammarTOC scroll targets resolve correctly.
+  useEffect(() => {
+    if (!editor || !containerRef.current) return
+    const headingEls = containerRef.current.querySelectorAll("h1, h2, h3")
+    headingEls.forEach(el => {
+      const text = el.textContent?.trim() ?? ""
+      if (text && !el.id) {
+        el.id = headingId(text)
+      }
+    })
+  }, [editor])
+
   if (!editor) {
     return <div className="prose prose-slate dark:prose-invert max-w-none">Loading...</div>
   }
 
   return (
-    <div className={`prose prose-slate dark:prose-invert max-w-none ${className || ''}`}>
+    <div
+      ref={containerRef}
+      className={`prose prose-slate dark:prose-invert max-w-none ${className || ""}`}
+    >
       <EditorContent editor={editor} />
     </div>
   )

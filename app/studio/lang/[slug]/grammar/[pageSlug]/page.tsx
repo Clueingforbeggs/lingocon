@@ -15,9 +15,6 @@ async function getGrammarPage(languageSlug: string, pageSlug: string, userId: st
         },
       },
       grammarPages: {
-        where: {
-          slug: pageSlug,
-        },
         select: {
           id: true,
           title: true,
@@ -30,6 +27,7 @@ async function getGrammarPage(languageSlug: string, pageSlug: string, userId: st
           createdAt: true,
           updatedAt: true,
         },
+        orderBy: { order: "asc" },
       },
     },
   })
@@ -46,12 +44,16 @@ async function getGrammarPage(languageSlug: string, pageSlug: string, userId: st
     }
   }
 
-  const page = language.grammarPages[0]
+  const page = language.grammarPages.find(p => p.slug === pageSlug)
   if (!page) {
     return null
   }
 
-  return { languageId: language.id, page, symbols: language.scriptSymbols }
+  const otherPages = language.grammarPages
+    .filter(p => p.slug !== pageSlug)
+    .map(p => ({ id: p.id, title: p.title, slug: p.slug }))
+
+  return { languageId: language.id, page, symbols: language.scriptSymbols, otherPages }
 }
 
 export default async function EditGrammarPage({
@@ -73,7 +75,7 @@ export default async function EditGrammarPage({
     notFound()
   }
 
-  const { languageId, page, symbols } = result
+  const { languageId, page, symbols, otherPages } = result
 
   return (
     <GrammarEditor
@@ -81,6 +83,7 @@ export default async function EditGrammarPage({
       languageSlug={slug}
       page={page}
       symbols={symbols}
+      grammarPages={otherPages}
     />
   )
 }

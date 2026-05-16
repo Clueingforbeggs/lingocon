@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import { BookOpen, ChevronRight } from "lucide-react"
+import { documentToPlainText } from "@/lib/utils/tiptap-text"
+
+export const revalidate = 3600
 
 async function getLanguage(slug: string) {
   const language = await prisma.language.findUnique({
@@ -11,8 +15,14 @@ async function getLanguage(slug: string) {
       slug: true,
       visibility: true,
       grammarPages: {
-        orderBy: {
-          order: "asc",
+        orderBy: { order: "asc" },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          content: true,
+          imageUrl: true,
+          order: true,
         },
       },
     },
@@ -37,30 +47,68 @@ export default async function GrammarIndexPage({
     notFound()
   }
 
+  // Compute excerpts and word counts server-side
+  const pages = language.grammarPages.map((page) => {
+    const text = documentToPlainText(page.content)
+    const words = text.length > 0 ? text.split(/\s+/).length : 0
+    const excerpt = text.length > 120 ? text.slice(0, 120).trimEnd() + "…" : text
+    return { ...page, words, excerpt }
+  })
+
+  const totalWords = pages.reduce((sum, p) => sum + p.words, 0)
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Grammar</h2>
-        <p className="mt-2 text-muted-foreground">
-          Grammar documentation and linguistic rules
-        </p>
+    <div className="space-y-8">
+      <div className="border-b border-border/40 pb-6">
+        <h1 className="text-3xl md:text-4xl font-serif font-medium tracking-tight">Grammar</h1>
+        {pages.length > 0 && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {pages.length} page{pages.length !== 1 ? "s" : ""}
+            {totalWords > 0 && ` · ${totalWords.toLocaleString()} words`}
+          </p>
+        )}
       </div>
 
-      {language.grammarPages.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-muted-foreground">
-            No grammar pages have been created yet.
+      {pages.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+            <BookOpen className="h-8 w-8 text-primary" />
+          </div>
+          <h2 className="text-lg font-medium mb-2">No grammar pages yet</h2>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            The author hasn&apos;t added any grammar documentation yet.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {language.grammarPages.map((page) => (
+        <div className="grid gap-3">
+          {pages.map((page, index) => (
             <Link
               key={page.id}
               href={`/lang/${language.slug}/grammar/${page.slug}`}
-              className="block rounded-lg border p-6 transition-colors hover:bg-accent/50"
+              className="group flex items-start gap-4 rounded-xl border border-border/40 bg-card/30 p-5 transition-all hover:border-primary/30 hover:bg-card/60 hover:shadow-sm"
             >
-              <h3 className="text-xl font-semibold">{page.title}</h3>
+              {/* Ordinal */}
+              <span className="shrink-0 text-sm tabular-nums text-muted-foreground/50 font-mono mt-0.5 w-5 text-right">
+                {index + 1}.
+              </span>
+
+              <div className="flex-1 min-w-0">
+                <h2 className="font-serif text-lg font-medium group-hover:text-primary transition-colors">
+                  {page.title}
+                </h2>
+                {page.excerpt && (
+                  <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                    {page.excerpt}
+                  </p>
+                )}
+                {page.words > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground/60 tabular-nums">
+                    {page.words.toLocaleString()} word{page.words !== 1 ? "s" : ""}
+                  </p>
+                )}
+              </div>
+
+              <ChevronRight className="shrink-0 h-4 w-4 text-muted-foreground/30 mt-1 group-hover:text-primary/50 transition-colors" />
             </Link>
           ))}
         </div>
@@ -68,4 +116,3 @@ export default async function GrammarIndexPage({
     </div>
   )
 }
-

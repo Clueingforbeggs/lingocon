@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import type { Editor } from "@tiptap/react"
+import type { Editor, JSONContent } from "@tiptap/react"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import {
   createGrammarPage,
@@ -27,14 +27,15 @@ import {
 } from "@/components/ui/dialog"
 import { Save, ArrowLeft, Trash2, AlertTriangle, Bold, Italic, List, ListOrdered, Heading1, Heading2, Table2 } from "lucide-react"
 import Link from "next/link"
-import type { GrammarPage } from "@prisma/client"
+import type { GrammarPage, ScriptSymbol } from "@prisma/client"
 
 interface GrammarEditorProps {
   languageId: string
   languageSlug: string
   page?: GrammarPage
   order?: number
-  symbols?: any[]
+  symbols?: Pick<ScriptSymbol, "id" | "symbol" | "ipa" | "latin" | "name" | "order">[]
+  grammarPages?: { id: string; title: string; slug: string }[]
 }
 
 export function GrammarEditor({
@@ -43,6 +44,7 @@ export function GrammarEditor({
   page,
   order = 0,
   symbols = [],
+  grammarPages = [],
 }: GrammarEditorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -54,16 +56,14 @@ export function GrammarEditor({
   const [slug, setSlug] = useState(page?.slug || "")
   const [imageUrl, setImageUrl] = useState<string | null>(page?.imageUrl || null)
 
-  const defaultContent = {
+  const defaultContent: JSONContent = {
     type: "doc",
-    content: [
-      {
-        type: "paragraph",
-      },
-    ],
-  } as any
+    content: [{ type: "paragraph" }],
+  }
 
-  const [content, setContent] = useState<any>(page?.content || defaultContent)
+  const [content, setContent] = useState<JSONContent>(
+    (page?.content as JSONContent | null) ?? defaultContent
+  )
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value
@@ -217,6 +217,9 @@ export function GrammarEditor({
             }}
             withIpaChart
             symbols={symbols}
+            withWikiLinks
+            languageSlug={languageSlug}
+            grammarPages={grammarPages}
           />
         </Card>
 

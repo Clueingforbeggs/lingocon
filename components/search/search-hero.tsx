@@ -1,48 +1,76 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
-import { Search, ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
+import { Search, X } from "lucide-react"
+import { useRef, useEffect } from "react"
+import Link from "next/link"
 
 interface SearchHeroProps {
     value: string
     onChange: (value: string) => void
+    onSubmit: () => void
     compact?: boolean
 }
 
-export function SearchHero({ value, onChange, compact }: SearchHeroProps) {
-    const router = useRouter()
+export function SearchHero({ value, onChange, onSubmit, compact }: SearchHeroProps) {
+    const inputRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        if (!compact && inputRef.current) {
+            inputRef.current.focus()
+        }
+    }, [compact])
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            e.preventDefault()
+            onSubmit()
+        }
+        if (e.key === "Escape") {
+            onChange("")
+            inputRef.current?.blur()
+        }
+    }
 
     if (compact) {
         return (
-            <div className="flex w-full items-center gap-4 py-6 px-4 md:px-0">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => router.back()}
+            <div className="flex w-full items-center gap-4 pt-5 pb-0 px-4 md:px-0">
+                <Link
+                    href="/search"
+                    onClick={(e) => { e.preventDefault(); onChange("") }}
+                    className="shrink-0 hidden md:block"
                 >
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
+                    <span className="text-2xl font-bold tracking-tight">
+                        <span className="text-blue-500">L</span>
+                        <span className="text-red-500">i</span>
+                        <span className="text-amber-500">n</span>
+                        <span className="text-blue-500">g</span>
+                        <span className="text-green-500">o</span>
+                        <span className="text-red-500">C</span>
+                        <span className="text-amber-500">o</span>
+                        <span className="text-blue-500">n</span>
+                    </span>
+                </Link>
                 
-                <div className="relative w-full max-w-2xl">
-                    <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50">
-                        <Search className="h-5 w-5" />
+                <div className="relative w-full max-w-[690px]">
+                    <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/60">
+                        <Search className="h-[18px] w-[18px]" />
                     </div>
                     <Input
+                        ref={inputRef}
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         placeholder="Search LingoCon..."
-                        className="h-12 w-full rounded-full border border-border/50 bg-background pl-12 pr-4 shadow-sm transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/10 dark:bg-muted/10"
+                        className="h-11 w-full rounded-full border border-border/60 bg-background pl-11 pr-10 text-base shadow-sm transition-all hover:shadow-md focus:shadow-md focus:border-border focus:ring-0 dark:bg-muted/10"
                     />
                     {value && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                            <kbd className="hidden rounded border border-border/50 bg-muted/20 px-2 py-1 font-mono text-xs text-muted-foreground md:inline-flex">
-                                ESC
-                            </kbd>
-                        </div>
+                        <button
+                            onClick={() => { onChange(""); inputRef.current?.focus() }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
                     )}
                 </div>
             </div>
@@ -50,47 +78,55 @@ export function SearchHero({ value, onChange, compact }: SearchHeroProps) {
     }
 
     return (
-        <div className="relative mb-8 flex w-full flex-col items-center justify-center text-center py-20">
-            <div className="absolute left-0 top-0 mt-4 ml-4">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-2 text-muted-foreground hover:text-foreground"
-                    onClick={() => router.back()}
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
-                </Button>
-            </div>
-
-            <div className="mb-8 space-y-2">
-                <h1 className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent md:text-6xl lg:text-7xl">
-                    LingoCon
+        <div className="flex w-full flex-col items-center justify-center text-center py-[120px] md:py-[140px]">
+            <div className="mb-10">
+                <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight select-none">
+                    <span className="text-blue-500">L</span>
+                    <span className="text-red-500">i</span>
+                    <span className="text-amber-500">n</span>
+                    <span className="text-blue-500">g</span>
+                    <span className="text-green-500">o</span>
+                    <span className="text-red-500">C</span>
+                    <span className="text-amber-500">o</span>
+                    <span className="text-blue-500">n</span>
                 </h1>
-                <p className="max-w-[600px] text-lg text-muted-foreground md:text-xl">
-                    Search across thousands of constructed languages, dictionary entries, and community grammars.
-                </p>
             </div>
 
-            <div className="relative w-full max-w-2xl transform transition-all duration-200 focus-within:scale-[1.02]">
-                <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50">
-                    <Search className="h-6 w-6" />
+            <div className="relative w-full max-w-[584px] px-4 group">
+                <div className="pointer-events-none absolute left-8 top-1/2 -translate-y-1/2 text-muted-foreground/50">
+                    <Search className="h-5 w-5" />
                 </div>
                 <Input
+                    ref={inputRef}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    placeholder="Search LingoCon or type a URL"
-                    className="h-14 w-full rounded-full border-2 border-primary/10 bg-background/50 pl-14 text-lg shadow-lg backdrop-blur-xl transition-all placeholder:text-muted-foreground/40 hover:bg-background/80 hover:shadow-md focus:border-primary/20 focus:bg-background focus:ring-4 focus:ring-primary/5 dark:bg-muted/10"
+                    onKeyDown={handleKeyDown}
+                    placeholder="Search constructed languages..."
+                    className="h-12 w-full rounded-full border border-border/60 bg-background pl-12 pr-12 text-base shadow-sm transition-all hover:shadow-md focus:shadow-md focus:border-border focus:ring-0 dark:bg-muted/10"
                 />
+                {value && (
+                    <button
+                        onClick={() => { onChange(""); inputRef.current?.focus() }}
+                        className="absolute right-8 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                )}
             </div>
             
-            <div className="mt-8 flex items-center justify-center gap-4">
-                <Button variant="secondary" className="px-6 rounded-md text-sm">
+            <div className="mt-8 flex items-center justify-center gap-3">
+                <button
+                    onClick={onSubmit}
+                    className="px-4 py-2 text-sm bg-secondary hover:bg-secondary/80 border border-border/30 rounded-md text-foreground transition-colors"
+                >
                     LingoCon Search
-                </Button>
-                <Button variant="secondary" className="px-6 rounded-md text-sm">
-                    I&apos;m Feeling Lucky
-                </Button>
+                </button>
+                <Link
+                    href="/browse"
+                    className="px-4 py-2 text-sm bg-secondary hover:bg-secondary/80 border border-border/30 rounded-md text-foreground transition-colors"
+                >
+                    Browse Languages
+                </Link>
             </div>
         </div>
     )

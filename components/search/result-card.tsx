@@ -1,10 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { BookOpen, FileText, Globe, Hash } from "lucide-react"
-import { LanguagePlaceholder } from "@/components/language-placeholder"
+import { Globe } from "lucide-react"
 
 interface BaseResult {
     id: string
@@ -59,115 +56,155 @@ type SearchResultItem = LanguageResult | DictionaryResult | GrammarResult | Arti
 
 interface ResultCardProps {
     result: SearchResultItem
+    query?: string
 }
 
-export function ResultCard({ result }: ResultCardProps) {
+function highlightMatch(text: string, query?: string): React.ReactNode {
+    if (!query || !text) return text
+    const idx = text.toLowerCase().indexOf(query.toLowerCase())
+    if (idx === -1) return text
+    return (
+        <>
+            {text.slice(0, idx)}
+            <strong className="font-bold">{text.slice(idx, idx + query.length)}</strong>
+            {text.slice(idx + query.length)}
+        </>
+    )
+}
+
+export function ResultCard({ result, query }: ResultCardProps) {
     if (result.type === "language") {
+        const url = `/lang/${result.slug}`
         return (
-            <div className="group flex flex-col gap-1 py-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <Globe className="h-4 w-4" />
-                    <span>lingocon.com &gt; lang &gt; {result.slug}</span>
+            <div className="group max-w-[600px] mb-6">
+                <div className="flex items-center gap-1.5 text-sm mb-0.5">
+                    {result.flagUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={result.flagUrl} alt="" className="h-5 w-5 rounded-full object-cover" />
+                    ) : (
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="text-sm text-foreground/70">lingocon.com</span>
+                    <span className="text-sm text-foreground/50">›</span>
+                    <span className="text-sm text-foreground/70">lang</span>
+                    <span className="text-sm text-foreground/50">›</span>
+                    <span className="text-sm text-foreground/70">{result.slug}</span>
                 </div>
-                <Link href={`/lang/${result.slug}`} className="group-hover:underline">
-                    <h3 className="text-xl font-medium text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                        {result.name}
-                        {result.flagUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={result.flagUrl} alt={`${result.name} flag`} className="h-4 w-6 rounded-sm object-cover ml-2" />
+                <Link href={url} className="block">
+                    <h3 className="text-xl leading-snug text-blue-700 dark:text-[#8ab4f8] hover:underline cursor-pointer">
+                        {highlightMatch(result.name, query)}
+                        {result.owner.name && (
+                            <span className="text-base text-foreground/50 font-normal"> — by {result.owner.name}</span>
                         )}
                     </h3>
                 </Link>
-                <p className="text-sm text-foreground mt-1 line-clamp-2">
-                    {result.description || `Explore the ${result.name} constructed language created by ${result.owner.name || "Unknown"}.`}
+                <p className="text-sm leading-relaxed text-foreground/80 mt-0.5 line-clamp-2">
+                    {result.description || `A constructed language with ${result._count.dictionaryEntries} dictionary entries and ${result._count.grammarPages} grammar pages.`}
                 </p>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-                    <span>{result._count.dictionaryEntries} dictionary entries</span>
-                    <span>•</span>
+                <div className="flex items-center gap-4 text-xs text-foreground/50 mt-1.5">
+                    <span>{result._count.dictionaryEntries} words</span>
                     <span>{result._count.grammarPages} grammar pages</span>
+                    <span>{result._count.scriptSymbols} script symbols</span>
                 </div>
             </div>
         )
     }
 
     if (result.type === "entry") {
+        const url = `/lang/${result.language.slug}/dictionary?q=${encodeURIComponent(result.lemma)}`
         return (
-            <div className="group flex flex-col gap-1 py-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <span>lingocon.com &gt; lang &gt; {result.language.slug} &gt; dictionary</span>
+            <div className="group max-w-[600px] mb-6">
+                <div className="flex items-center gap-1.5 text-sm mb-0.5">
+                    <span className="text-sm text-foreground/70">lingocon.com</span>
+                    <span className="text-sm text-foreground/50">›</span>
+                    <span className="text-sm text-foreground/70">{result.language.slug}</span>
+                    <span className="text-sm text-foreground/50">›</span>
+                    <span className="text-sm text-foreground/70">dictionary</span>
                 </div>
-                <Link href={`/lang/${result.language.slug}/dictionary?q=${encodeURIComponent(result.lemma)}`} className="group-hover:underline">
-                    <h3 className="text-xl font-medium text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                <Link href={url} className="block">
+                    <h3 className="text-xl leading-snug text-blue-700 dark:text-[#8ab4f8] hover:underline cursor-pointer">
                         <span style={result.language.fontFamily ? { fontFamily: result.language.fontFamily } : undefined}>
-                            {result.lemma}
+                            {highlightMatch(result.lemma, query)}
                         </span>
-                        {result.ipa && <span className="text-muted-foreground text-base font-normal">/{result.ipa}/</span>}
-                        <span className="text-xs font-normal px-2 py-0.5 bg-muted rounded-full ml-2 text-foreground">Dictionary</span>
+                        {result.ipa && (
+                            <span className="text-foreground/50 text-base font-normal ml-2">/{result.ipa}/</span>
+                        )}
                     </h3>
                 </Link>
-                <p className="text-sm text-foreground mt-1 line-clamp-2">
-                    <span className="font-medium text-muted-foreground mr-2">{result.language.name}</span>
-                    {result.gloss}
+                <p className="text-sm leading-relaxed text-foreground/80 mt-0.5 line-clamp-2">
+                    <span className="font-medium">{result.language.name}:</span>{" "}
+                    {highlightMatch(result.gloss, query)}
                 </p>
             </div>
         )
     }
 
     if (result.type === "grammar") {
+        const url = `/lang/${result.language.slug}/grammar/${result.slug}`
         return (
-            <div className="group flex flex-col gap-1 py-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <span>lingocon.com &gt; lang &gt; {result.language.slug} &gt; grammar</span>
+            <div className="group max-w-[600px] mb-6">
+                <div className="flex items-center gap-1.5 text-sm mb-0.5">
+                    <span className="text-sm text-foreground/70">lingocon.com</span>
+                    <span className="text-sm text-foreground/50">›</span>
+                    <span className="text-sm text-foreground/70">{result.language.slug}</span>
+                    <span className="text-sm text-foreground/50">›</span>
+                    <span className="text-sm text-foreground/70">grammar</span>
                 </div>
-                <Link href={`/lang/${result.language.slug}/grammar/${result.slug}`} className="group-hover:underline">
-                    <h3 className="text-xl font-medium text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                        {result.title}
-                        <span className="text-xs font-normal px-2 py-0.5 bg-muted rounded-full ml-2 text-foreground">Grammar</span>
+                <Link href={url} className="block">
+                    <h3 className="text-xl leading-snug text-blue-700 dark:text-[#8ab4f8] hover:underline cursor-pointer">
+                        {highlightMatch(result.title, query)}
                     </h3>
                 </Link>
-                <p className="text-sm text-foreground mt-1 line-clamp-2">
-                    <span className="font-medium text-muted-foreground mr-2">{result.language.name}</span>
-                    Read grammar documentation for {result.title}.
+                <p className="text-sm leading-relaxed text-foreground/80 mt-0.5 line-clamp-2">
+                    Grammar documentation for <span className="font-medium">{result.language.name}</span>: {result.title}
                 </p>
             </div>
         )
     }
 
     if (result.type === "article") {
+        const url = `/lang/${result.language.slug}/articles/${result.slug}`
         return (
-            <div className="group flex flex-col gap-1 py-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <span>lingocon.com &gt; lang &gt; {result.language.slug} &gt; articles</span>
+            <div className="group max-w-[600px] mb-6">
+                <div className="flex items-center gap-1.5 text-sm mb-0.5">
+                    <span className="text-sm text-foreground/70">lingocon.com</span>
+                    <span className="text-sm text-foreground/50">›</span>
+                    <span className="text-sm text-foreground/70">{result.language.slug}</span>
+                    <span className="text-sm text-foreground/50">›</span>
+                    <span className="text-sm text-foreground/70">articles</span>
                 </div>
-                <Link href={`/lang/${result.language.slug}/articles/${result.slug}`} className="group-hover:underline">
-                    <h3 className="text-xl font-medium text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                        {result.title}
-                        <span className="text-xs font-normal px-2 py-0.5 bg-muted rounded-full ml-2 text-foreground">Article</span>
+                <Link href={url} className="block">
+                    <h3 className="text-xl leading-snug text-blue-700 dark:text-[#8ab4f8] hover:underline cursor-pointer">
+                        {highlightMatch(result.title, query)}
                     </h3>
                 </Link>
-                <p className="text-sm text-foreground mt-1 line-clamp-2">
-                    <span className="font-medium text-muted-foreground mr-2">{result.language.name}</span>
-                    {result.excerpt || "Read full article."}
+                <p className="text-sm leading-relaxed text-foreground/80 mt-0.5 line-clamp-2">
+                    <span className="font-medium">{result.language.name}</span>{" — "}
+                    {result.excerpt || "Read the full article."}
                 </p>
             </div>
         )
     }
 
     if (result.type === "text") {
+        const url = `/lang/${result.language.slug}/texts/${result.slug}`
         return (
-            <div className="group flex flex-col gap-1 py-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <span>lingocon.com &gt; lang &gt; {result.language.slug} &gt; texts</span>
+            <div className="group max-w-[600px] mb-6">
+                <div className="flex items-center gap-1.5 text-sm mb-0.5">
+                    <span className="text-sm text-foreground/70">lingocon.com</span>
+                    <span className="text-sm text-foreground/50">›</span>
+                    <span className="text-sm text-foreground/70">{result.language.slug}</span>
+                    <span className="text-sm text-foreground/50">›</span>
+                    <span className="text-sm text-foreground/70">texts</span>
                 </div>
-                <Link href={`/lang/${result.language.slug}/texts/${result.slug}`} className="group-hover:underline">
-                    <h3 className="text-xl font-medium text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                        {result.title}
-                        <span className="text-xs font-normal px-2 py-0.5 bg-muted rounded-full ml-2 text-foreground">Text</span>
+                <Link href={url} className="block">
+                    <h3 className="text-xl leading-snug text-blue-700 dark:text-[#8ab4f8] hover:underline cursor-pointer">
+                        {highlightMatch(result.title, query)}
                     </h3>
                 </Link>
-                <p className="text-sm text-foreground mt-1 line-clamp-2">
-                    <span className="font-medium text-muted-foreground mr-2">{result.language.name}</span>
-                    {result.description || "Read translated text."}
+                <p className="text-sm leading-relaxed text-foreground/80 mt-0.5 line-clamp-2">
+                    <span className="font-medium">{result.language.name}</span>{" — "}
+                    {result.description || "Read the translated text."}
                 </p>
             </div>
         )

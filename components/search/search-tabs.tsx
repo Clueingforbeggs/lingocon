@@ -1,9 +1,8 @@
 "use client"
 
 import { SearchScope } from "@/lib/services/search"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { BookOpen, FileText, Globe, LayoutGrid } from "lucide-react"
+import { Globe, BookOpen, FileText, Search, Newspaper, ScrollText } from "lucide-react"
 
 interface SearchTabsProps {
     currentTab: SearchScope
@@ -20,39 +19,40 @@ interface SearchTabsProps {
 
 export function SearchTabs({ currentTab, onTabChange, counts }: SearchTabsProps) {
     const tabs: { id: SearchScope; label: string; icon: React.ReactNode }[] = [
-        { id: "all", label: "All Results", icon: <LayoutGrid className="h-4 w-4" /> },
+        { id: "all", label: "All", icon: <Search className="h-4 w-4" /> },
         { id: "languages", label: "Languages", icon: <Globe className="h-4 w-4" /> },
-        { id: "dictionary", label: "Dictionary", icon: <FileText className="h-4 w-4" /> },
-        { id: "grammar", label: "Grammar", icon: <BookOpen className="h-4 w-4" /> },
-        { id: "articles", label: "Articles", icon: <FileText className="h-4 w-4" /> },
-        { id: "texts", label: "Texts", icon: <BookOpen className="h-4 w-4" /> },
+        { id: "dictionary", label: "Dictionary", icon: <BookOpen className="h-4 w-4" /> },
+        { id: "grammar", label: "Grammar", icon: <FileText className="h-4 w-4" /> },
+        { id: "articles", label: "Articles", icon: <Newspaper className="h-4 w-4" /> },
+        { id: "texts", label: "Texts", icon: <ScrollText className="h-4 w-4" /> },
     ]
 
     return (
-        <div className="w-full border-b border-border/40 mb-6">
-            <div className="flex w-full items-center justify-start gap-6 overflow-x-auto px-4 md:px-0">
+        <div className="w-full border-b border-border/40">
+            <div className="flex items-center gap-1 overflow-x-auto px-4 md:px-0 md:ml-[140px]">
                 {tabs.map((tab) => {
                     const isActive = currentTab === tab.id
+                    const count = counts[tab.id]
+                    
+                    // Hide tabs with 0 results (except "All")
+                    if (tab.id !== "all" && count === 0) return null
+
                     return (
                         <button
                             key={tab.id}
                             onClick={() => onTabChange(tab.id)}
                             className={cn(
-                                "group relative flex items-center gap-2 pb-3 pt-2 text-sm font-medium transition-colors hover:text-primary",
-                                isActive ? "text-primary" : "text-muted-foreground"
+                                "relative flex items-center gap-1.5 px-3 pb-3 pt-3 text-sm whitespace-nowrap transition-colors",
+                                isActive
+                                    ? "text-blue-600 dark:text-blue-400"
+                                    : "text-muted-foreground hover:text-foreground"
                             )}
                         >
-                            <span className={cn(
-                                "flex items-center gap-2",
-                                isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-                            )}>
-                                {tab.icon}
-                                {tab.label}
-                            </span>
+                            {tab.icon}
+                            <span>{tab.label}</span>
                             
-                            {/* Active Underline */}
                             {isActive && (
-                                <span className="absolute bottom-0 left-0 w-full h-[3px] bg-primary rounded-t-md" />
+                                <span className="absolute bottom-0 left-0 w-full h-[3px] bg-blue-600 dark:bg-blue-400 rounded-t-full" />
                             )}
                         </button>
                     )

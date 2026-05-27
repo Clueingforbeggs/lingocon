@@ -2,14 +2,17 @@ import { Search } from "lucide-react"
 
 export function SearchEmpty() {
     return (
-        <div className="flex flex-col items-center justify-center py-12 text-center animate-in fade-in duration-500">
-            <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-muted/30">
-                <Search className="h-10 w-10 text-muted-foreground/30" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground">No results found</h3>
-            <p className="mt-2 max-w-sm text-muted-foreground">
-                We couldn&apos;t find anything matching your search. Try different keywords or browse our top languages.
+        <div className="px-4 md:px-0 md:ml-[140px] pt-8 pb-16">
+            <p className="text-sm text-foreground/80 mb-4">
+                Your search did not match any documents.
             </p>
+            <p className="text-sm text-foreground/60 mb-2">Suggestions:</p>
+            <ul className="text-sm text-foreground/60 list-disc ml-5 space-y-1">
+                <li>Make sure that all words are spelled correctly.</li>
+                <li>Try different keywords.</li>
+                <li>Try more general keywords.</li>
+                <li>Try fewer keywords.</li>
+            </ul>
         </div>
     )
 }

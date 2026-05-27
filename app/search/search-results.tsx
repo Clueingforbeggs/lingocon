@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useDebounce } from "@/lib/hooks/use-debounce"
 import { SearchScope, SearchResult } from "@/lib/services/search"
@@ -19,39 +19,54 @@ export function SearchResults() {
     const [activeTab, setActiveTab] = useState<SearchScope>("all")
     const [results, setResults] = useState<SearchResult | null>(null)
     const [loading, setLoading] = useState(false)
+    const [searchTime, setSearchTime] = useState<number | null>(null)
+    const hasSearched = useRef(false)
 
-    const debouncedQuery = useDebounce(query, 300)
+    const debouncedQuery = useDebounce(query, 350)
 
     // Sync URL with query
     useEffect(() => {
-        const params = new URLSearchParams(searchParams)
         if (debouncedQuery) {
-            params.set("q", debouncedQuery)
-        } else {
-            params.delete("q")
+            router.replace(`/search?q=${encodeURIComponent(debouncedQuery)}`, { scroll: false })
+        } else if (hasSearched.current) {
+            router.replace("/search", { scroll: false })
         }
-        router.replace(`/search?${params.toString()}`, { scroll: false })
-    }, [debouncedQuery, router, searchParams])
+    }, [debouncedQuery, router])
 
     // Fetch results
-    useEffect(() => {
-        if (!debouncedQuery || debouncedQuery.length < 2) {
+    const fetchResults = useCallback(async (q: string, scope: SearchScope) => {
+        if (!q || q.length < 2) {
             setResults(null)
+            setSearchTime(null)
             return
         }
 
         setLoading(true)
-        fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}&scope=${activeTab}`)
-            .then((res) => res.json())
-            .then((data) => {
-                setResults(data)
-                setLoading(false)
-            })
-            .catch((err) => {
-                console.error(err)
-                setLoading(false)
-            })
-    }, [debouncedQuery, activeTab])
+        const startTime = performance.now()
+        
+        try {
+            const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&scope=${scope}`)
+            const data = await res.json()
+            const elapsed = ((performance.now() - startTime) / 1000).toFixed(2)
+            setResults(data)
+            setSearchTime(Number(elapsed))
+            hasSearched.current = true
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        fetchResults(debouncedQuery, activeTab)
+    }, [debouncedQuery, activeTab, fetchResults])
+
+    const handleSubmit = () => {
+        if (query.length >= 2) {
+            fetchResults(query, activeTab)
+        }
+    }
 
     const counts = {
         all: results ? results.languages.length + results.entries.length + results.grammarPages.length + results.articles.length + results.texts.length : 0,
@@ -68,12 +83,19 @@ export function SearchResults() {
     const showArticles = (activeTab === "all" || activeTab === "articles") && results?.articles.length
     const showTexts = (activeTab === "all" || activeTab === "texts") && results?.texts.length
 
-    return (
-        <div className="mx-auto w-full max-w-5xl md:px-6">
-            <SearchHero value={query} onChange={setQuery} compact={debouncedQuery.length > 0} />
+    const isSearchActive = debouncedQuery.length >= 2
 
-            {debouncedQuery.length >= 2 && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    return (
+        <div className="mx-auto w-full max-w-[1078px]">
+            <SearchHero
+                value={query}
+                onChange={setQuery}
+                onSubmit={handleSubmit}
+                compact={isSearchActive}
+            />
+
+            {isSearchActive && (
+                <>
                     <SearchTabs
                         currentTab={activeTab}
                         onTabChange={setActiveTab}
@@ -82,100 +104,82 @@ export function SearchResults() {
 
                     {loading ? (
                         <div className="flex justify-center py-24">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary/30" />
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
                         </div>
                     ) : !results || counts.all === 0 ? (
                         <SearchEmpty />
                     ) : (
-                        <div className="px-4 md:px-0 max-w-[700px] flex flex-col space-y-4 pb-24">
-                            {showLanguages ? (
-                                <div className="flex flex-col space-y-2">
-                                    {results.languages.map((lang) => (
-                                        <ResultCard
-                                            key={lang.id}
-                                            result={{ ...lang, type: "language" }}
-                                        />
-                                    ))}
+                        <div className="px-4 md:px-0 md:ml-[140px] pt-4 pb-16">
+                            {/* Result stats */}
+                            <p className="text-xs text-foreground/50 mb-4">
+                                About {counts.all} result{counts.all !== 1 ? "s" : ""}
+                                {searchTime !== null && ` (${searchTime} seconds)`}
+                            </p>
+
+                            {/* Languages */}
+                            {showLanguages && results.languages.map((lang) => (
+                                <ResultCard
+                                    key={lang.id}
+                                    result={{ ...lang, type: "language" }}
+                                    query={debouncedQuery}
+                                />
+                            ))}
+
+                            {/* Dictionary Entries */}
+                            {showEntries && results.entries.map((entry) => (
+                                <ResultCard
+                                    key={entry.id}
+                                    result={{ ...entry, type: "entry" }}
+                                    query={debouncedQuery}
+                                />
+                            ))}
+
+                            {/* Grammar Pages */}
+                            {showGrammar && results.grammarPages.map((page) => (
+                                <ResultCard
+                                    key={page.id}
+                                    result={{ ...page, type: "grammar" }}
+                                    query={debouncedQuery}
+                                />
+                            ))}
+
+                            {/* Articles */}
+                            {showArticles && results.articles.map((article) => (
+                                <ResultCard
+                                    key={article.id}
+                                    result={{ ...article, type: "article" }}
+                                    query={debouncedQuery}
+                                />
+                            ))}
+
+                            {/* Texts */}
+                            {showTexts && results.texts.map((text) => (
+                                <ResultCard
+                                    key={text.id}
+                                    result={{ ...text, type: "text" }}
+                                    query={debouncedQuery}
+                                />
+                            ))}
+
+                            {/* Footer */}
+                            <div className="mt-8 pt-6 border-t border-border/30 flex flex-col items-center gap-4">
+                                <div className="text-3xl font-bold tracking-wide select-none">
+                                    <span className="text-blue-500">L</span>
+                                    <span className="text-red-500">i</span>
+                                    <span className="text-amber-500">n</span>
+                                    <span className="text-blue-500">g</span>
+                                    <span className="text-green-500">o</span>
+                                    <span className="text-red-500">C</span>
+                                    <span className="text-amber-500">o</span>
+                                    <span className="text-blue-500">n</span>
                                 </div>
-                            ) : null}
-
-                            {(showEntries || showGrammar || showArticles || showTexts) && (
-                                <div className="flex flex-col space-y-2">
-                                    {showEntries ? (
-                                        <div className="flex flex-col space-y-2">
-                                            {activeTab === "all" && <h3 className="font-medium text-muted-foreground mt-6 mb-2 border-b pb-2">Dictionary Entries</h3>}
-                                            {results?.entries.map((entry) => (
-                                                <ResultCard
-                                                    key={entry.id}
-                                                    result={{ ...entry, type: "entry" }}
-                                                />
-                                            ))}
-                                        </div>
-                                    ) : null}
-
-                                    {showGrammar ? (
-                                        <div className="flex flex-col space-y-2">
-                                            {activeTab === "all" && <h3 className="font-medium text-muted-foreground mt-6 mb-2 border-b pb-2">Grammar Pages</h3>}
-                                            {results?.grammarPages.map((page) => (
-                                                <ResultCard
-                                                    key={page.id}
-                                                    result={{ ...page, type: "grammar" }}
-                                                />
-                                            ))}
-                                        </div>
-                                    ) : null}
-
-                                    {showArticles ? (
-                                        <div className="flex flex-col space-y-2">
-                                            {activeTab === "all" && <h3 className="font-medium text-muted-foreground mt-6 mb-2 border-b pb-2">Articles</h3>}
-                                            {results?.articles.map((article) => (
-                                                <ResultCard
-                                                    key={article.id}
-                                                    result={{ ...article, type: "article" }}
-                                                />
-                                            ))}
-                                        </div>
-                                    ) : null}
-
-                                    {showTexts ? (
-                                        <div className="flex flex-col space-y-2">
-                                            {activeTab === "all" && <h3 className="font-medium text-muted-foreground mt-6 mb-2 border-b pb-2">Texts</h3>}
-                                            {results?.texts.map((text) => (
-                                                <ResultCard
-                                                    key={text.id}
-                                                    result={{ ...text, type: "text" }}
-                                                />
-                                            ))}
-                                        </div>
-                                    ) : null}
-                                </div>
-                            )}
-                            
-                            <div className="mt-12 py-8 flex items-center justify-center border-t border-border/40">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="text-4xl font-extrabold tracking-widest text-primary flex items-center">
-                                        <span className="text-blue-500">L</span>
-                                        <span className="text-red-500">I</span>
-                                        <span className="text-amber-500">N</span>
-                                        <span className="text-blue-500">G</span>
-                                        <span className="text-green-500">O</span>
-                                        <span className="text-red-500">C</span>
-                                        <span className="text-amber-500">O</span>
-                                        <span className="text-blue-500">N</span>
-                                    </div>
-                                    <div className="flex gap-2 text-sm text-blue-600 dark:text-blue-400 mt-2">
-                                        <span className="hover:underline cursor-pointer">1</span>
-                                        <span className="hover:underline cursor-pointer">2</span>
-                                        <span className="hover:underline cursor-pointer">3</span>
-                                        <span className="hover:underline cursor-pointer">4</span>
-                                        <span className="hover:underline cursor-pointer">5</span>
-                                        <span className="text-foreground ml-2">Next</span>
-                                    </div>
-                                </div>
+                                <p className="text-xs text-foreground/40">
+                                    Showing {counts[activeTab]} results for &ldquo;{debouncedQuery}&rdquo;
+                                </p>
                             </div>
                         </div>
                     )}
-                </div>
+                </>
             )}
         </div>
     )

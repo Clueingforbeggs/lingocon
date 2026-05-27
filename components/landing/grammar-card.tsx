@@ -41,7 +41,7 @@ export function GrammarCard() {
                         </div>
                         {hoveredIndex === i && (
                             <span className="text-muted-foreground text-xs mt-2 text-center max-w-[100px]">
-                                The word for &quot;cat&quot; (māo) creates a pun with &quot;hair&quot; (máo).
+                                {item.type}
                             </span>
                         )}
                     </div>

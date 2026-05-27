@@ -3,14 +3,12 @@ import { prisma } from "@/lib/prisma"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import Image from "next/image"
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid"
 import {
   BookOpen,
   Languages,
   FileText,
   ArrowRight,
-  Sparkles,
   Search,
   PenTool,
   Library,
@@ -26,9 +24,7 @@ import { FeaturedLanguages } from "@/components/featured-languages"
 import { Navbar } from "@/components/navbar"
 import { TopLanguagesStripe } from "@/components/top-languages-stripe"
 
-import { InfiniteMovingCards } from "@/components/ui/infinite-moving-cards"
 import { HeroBackground } from "@/components/hero-background"
-import { TextReveal } from "@/components/ui/text-reveal"
 import { MagneticButton } from "@/components/ui/magnetic-button"
 import { Footer } from "@/components/footer"
 import { WordOfTheDay } from "@/components/word-of-the-day"
@@ -347,34 +343,6 @@ export default async function Home() {
     },
   ]
 
-  const testimonials = [
-    {
-      quote: "LingoCon has completely transformed how I document my conlangs. The dictionary tools are a lifesaver — I migrated my entire Ithkuil-inspired lexicon in a day.",
-      name: "Alex C.",
-      title: "Creator of Vëzhgad · Conlanger since 2015",
-    },
-    {
-      quote: "Finally, a tool that understands glossing rules. My grammar documentation looks professional and publication-ready now.",
-      name: "Sarah J.",
-      title: "Linguistics Student · Creator of Taliran",
-    },
-    {
-      quote: "The script support is incredible. Being able to see my constructed script rendered live alongside IPA — that's magic.",
-      name: "Marcus R.",
-      title: "Fantasy Author · Creator of Kheldric",
-    },
-    {
-      quote: "I used to use five different spreadsheets. LingoCon replaced them all. The paradigm tables alone saved me weeks.",
-      name: "Emily T.",
-      title: "Worldbuilder · Creator of Sëlani",
-    },
-    {
-      quote: "The best platform for sharing conlangs with the community. I love how polished everything looks when shared publicly.",
-      name: "David K.",
-      title: "Language Enthusiast · Creator of Nortusik",
-    },
-  ]
-
   const statItems = [
     { label: "Languages Created", value: stats.languageCount, icon: Languages, suffix: "+" },
     { label: "Words Defined", value: stats.wordCount, icon: BookMarked, suffix: "+" },
@@ -417,23 +385,18 @@ export default async function Home() {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-serif font-medium tracking-tight mb-8 leading-[0.9] text-foreground">
-            <span className="text-shine">
-              <TextReveal text="Create living languages" />
-            </span>
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-serif font-medium tracking-tight mb-8 leading-[0.9] text-foreground animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <span className="text-shine">Create living languages</span>
             <br />
             <span className="italic relative inline-block">
               <span className="text-gradient relative z-10">with structure</span>
-              <svg className="absolute w-full h-3 -bottom-1 left-0 text-accent opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
-                <line x1="0" y1="5" x2="100" y2="5" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-              </svg>
             </span>
           </h1>
 
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed font-light animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150">
-            Build, share, and breathe life into new languages.
-            LingoCon is the professional toolkit for language construction.
+            Phonology, lexicon, grammar, scripts, paradigm tables — all in one place.
+            Free, open source, built by conlangers.
           </p>
 
           {/* CTAs */}
@@ -644,19 +607,6 @@ export default async function Home() {
           </div>
         </section>
       )}
-
-      {/* ═══════════════════════════════════════════════════════════
-          COMMUNITY VOICES — Testimonials
-          ═══════════════════════════════════════════════════════════ */}
-      <section className="py-24 bg-background border-b border-border/40 overflow-hidden">
-        <div className="container mx-auto px-4 mb-12 text-center">
-          <h2 className="text-3xl md:text-5xl font-serif mb-6">Loved by Conlangers</h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Join the growing community of worldbuilders who trust LingoCon.
-          </p>
-        </div>
-        <InfiniteMovingCards items={testimonials} direction="right" speed="slow" />
-      </section>
 
       {/* ═══════════════════════════════════════════════════════════
           WORD OF THE DAY

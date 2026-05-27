@@ -64,7 +64,6 @@ async function getPublicLanguages(sortBy: SortOption = "recent", page: number = 
     parentLanguageId: true,
     externalAncestry: true,
     familyId: true,
-    lastSlugChangedAt: true,
     owner: {
       select: { id: true, name: true, image: true },
     },

@@ -3,14 +3,16 @@ import { auth } from "@/auth"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { existsSync } from "fs"
+import sharp from "sharp"
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"]
+const ALLOWED_AUDIO_TYPES = ["audio/webm", "audio/mp3", "audio/mpeg", "audio/ogg", "audio/wav", "audio/mp4"]
 const ALLOWED_FONT_TYPES = [
   "font/ttf", "font/otf", "font/woff", "font/woff2",
   "application/x-font-ttf", "application/x-font-opentype", "application/font-woff", "application/font-woff2",
   "font/sfnt", "application/font-sfnt", "application/vnd.ms-opentype", "application/x-font-truetype"
 ]
-const ALLOWED_FILE_TYPES = [...ALLOWED_IMAGE_TYPES, "application/pdf", "text/plain", "application/epub+zip", ...ALLOWED_FONT_TYPES]
+const ALLOWED_FILE_TYPES = [...ALLOWED_IMAGE_TYPES, "application/pdf", "text/plain", "application/epub+zip", ...ALLOWED_FONT_TYPES, ...ALLOWED_AUDIO_TYPES]
 const MAX_FILE_SIZE = 15 * 1024 * 1024 // 15MB
 
 export async function POST(req: NextRequest) {
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate upload type to prevent path traversal
-    const ALLOWED_UPLOAD_TYPES = ["flag", "cover", "image", "file", "font"]
+    const ALLOWED_UPLOAD_TYPES = ["flag", "cover", "image", "file", "font", "audio"]
     if (!ALLOWED_UPLOAD_TYPES.includes(type)) {
       return NextResponse.json({ error: "Invalid upload type" }, { status: 400 })
     }
@@ -49,6 +51,7 @@ export async function POST(req: NextRequest) {
     let allowedTypes = ALLOWED_IMAGE_TYPES
     if (type === "file") allowedTypes = ALLOWED_FILE_TYPES
     if (type === "font") allowedTypes = ALLOWED_FONT_TYPES
+    if (type === "audio") allowedTypes = ALLOWED_AUDIO_TYPES
 
     // Use "cover" directory for "image" type as well
     const uploadType = type === "image" ? "cover" : type
@@ -78,23 +81,36 @@ export async function POST(req: NextRequest) {
     // Generate unique filename
     const timestamp = Date.now()
     const randomStr = Math.random().toString(36).substring(2, 8)
-    const ext = file.name.split(".").pop() || "bin"
-    const filename = `${timestamp}-${randomStr}.${ext}`
-    const filepath = join(uploadDir, filename)
+    let ext = file.name.split(".").pop()?.toLowerCase() || "bin"
+    let filename = `${timestamp}-${randomStr}.${ext}`
+    let filepath = join(uploadDir, filename)
+    let finalUrl = `/uploads/${uploadType}/${filename}`
+    let finalSize = file.size
+    let finalType = file.type
+
+    // Process file
+    const bytes = await file.arrayBuffer()
+    let buffer = Buffer.from(bytes)
+
+    // Convert non-svg images to webp
+    if (ALLOWED_IMAGE_TYPES.includes(file.type) && file.type !== "image/svg+xml") {
+      buffer = await sharp(buffer).webp({ quality: 80 }).toBuffer()
+      ext = "webp"
+      filename = `${timestamp}-${randomStr}.${ext}`
+      filepath = join(uploadDir, filename)
+      finalUrl = `/uploads/${uploadType}/${filename}`
+      finalSize = buffer.length
+      finalType = "image/webp"
+    }
 
     // Write file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
     await writeFile(filepath, buffer)
 
-    // Return public URL (ensure it starts with /)
-    const url = `/uploads/${uploadType}/${filename}`
-
     return NextResponse.json({
-      url,
+      url: finalUrl,
       filename: file.name,
-      size: file.size,
-      type: file.type
+      size: finalSize,
+      type: finalType
     })
   } catch (error) {
     console.error("Upload error:", error)

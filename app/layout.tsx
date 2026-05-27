@@ -9,6 +9,22 @@ import { Toaster } from "@/components/ui/sonner";
 import { AchievementListener } from "@/components/achievement-listener";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Instrument_Serif, JetBrains_Mono } from "next/font/google";
+
+const instrumentSerif = Instrument_Serif({
+  weight: ["400"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-instrument-serif",
+  display: "swap",
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  weight: ["400", "500"],
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
 
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://lingocon.com";
@@ -16,47 +32,52 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://lingocon.com";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "LingoCon — Document Your Constructed Languages",
+    default: "LingoCon — Conlang Tool & Constructed Language Platform",
     template: "%s | LingoCon",
   },
-  description: "The platform for conlang creators. Build lexicons, write grammar documentation, and share your constructed languages with the world.",
+  description: "LingoCon is the free platform for conlang creators. Build lexicons, write grammar documentation, design scripts, and share your constructed languages with the world.",
   keywords: [
+    // Brand keywords — helps Google associate these terms with lingocon.com
+    "LingoCon", "lingocon.com", "lingocon conlang",
     // Primary target keywords
     "conlang", "conlang tools", "conlang maker", "conlang builder", "conlang creator", "conlang platform", "conlang software",
     // Constructed language variants
     "constructed language", "constructed language maker", "constructed language builder", "constructed language tools", "invented language", "artificial language", "fictional language",
     // Action-oriented
-    "create a conlang", "how to create a conlang", "language creation", "language design", "language invention", "make a language",
+    "create a conlang", "how to create a conlang", "language creation", "language design", "language invention", "make a language online",
     // Feature keywords
-    "lexicon builder", "grammar documentation", "phonology builder", "morphology tables", "IPA dictionary", "conlang dictionary", "grammar wiki",
+    "lexicon builder", "grammar documentation", "phonology builder", "morphology tables", "IPA dictionary", "conlang dictionary", "grammar wiki", "language family tree", "interlinear glossing",
     // Community & sharing
-    "conlang community", "share conlang", "conlang documentation",
+    "conlang community", "share conlang", "conlang documentation", "public conlang",
     // Adjacent use cases
-    "worldbuilding language", "worldbuilding tools", "fictional language creator", "language inventor", "linguistics documentation",
+    "worldbuilding language", "worldbuilding tools", "fictional language creator", "language inventor", "linguistics documentation", "tolkien style language", "elvish language creator",
+    // Free / online
+    "free conlang tool", "online conlang maker", "best conlang tool 2025",
   ],
-  authors: [{ name: "LingoCon" }, { name: "Alexander Chepkov" }],
+  authors: [{ name: "LingoCon", url: siteUrl }, { name: "Alexander Chepkov", url: "https://github.com/alexcircuits" }],
   creator: "Alexander Chepkov",
+  publisher: "LingoCon",
   category: "Language Tools",
   openGraph: {
     type: "website",
     locale: "en_US",
     url: siteUrl,
     siteName: "LingoCon",
-    title: "LingoCon — The #1 Platform for Conlang Creators",
-    description: "The most complete conlang tool available. Build structured lexicons, write grammar documentation, design custom scripts, and share your constructed languages with the world.",
+    title: "LingoCon — The #1 Free Conlang Tool & Constructed Language Platform",
+    description: "The most complete free conlang tool available. Build structured lexicons, write grammar documentation, design custom scripts, and share your constructed languages with the world.",
     images: [
       {
         url: `${siteUrl}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "LingoCon — The platform for conlang creators",
+        alt: "LingoCon — The free platform for conlang creators",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "LingoCon — The #1 Platform for Conlang Creators",
-    description: "The most complete conlang tool available. Build lexicons, grammar docs, custom scripts, and share your constructed languages.",
+    title: "LingoCon — The #1 Free Conlang Tool",
+    description: "Build lexicons, grammar docs, custom scripts, and share your constructed languages — all free. Trusted by the conlang community.",
     images: [`${siteUrl}/og-image.png`],
   },
   alternates: {
@@ -65,9 +86,11 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    nocache: false,
     googleBot: {
       index: true,
       follow: true,
+      noimageindex: false,
       "max-video-preview": -1,
       "max-image-preview": "large",
       "max-snippet": -1,
@@ -79,6 +102,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "LingoCon",
   },
+  other: {
+    "google-site-verification": process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
+  },
 };
 
 export default function RootLayout({
@@ -89,13 +115,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <meta name="theme-color" content="#267a6e" />
       </head>
-      <body className="min-h-screen antialiased">
+      <body className={`${instrumentSerif.variable} ${jetBrainsMono.variable} min-h-screen antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

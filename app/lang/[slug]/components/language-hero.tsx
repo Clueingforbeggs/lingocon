@@ -55,7 +55,7 @@ export function LanguageHero({ language, isFavorite, userId }: LanguageHeroProps
                         <div className="relative h-32 w-48 md:h-40 md:w-60 overflow-hidden rounded-xl border border-border/40 shadow-lg bg-card">
                             <Image
                                 src={language.flagUrl}
-                                alt={`${language.name} flag`}
+                                alt={`Flag of the ${language.name} constructed language`}
                                 fill
                                 className="object-cover transition-transform duration-700 group-hover:scale-105"
                                 priority

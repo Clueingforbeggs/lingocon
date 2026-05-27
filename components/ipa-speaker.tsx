@@ -137,7 +137,7 @@ export function IPASpeaker({
               variant={variant}
               size={size === "sm" && !children ? "icon" : undefined}
               onClick={handlePlay}
-              disabled={loading || !ipa || ipa.trim().length === 0}
+              disabled={loading || ((!ipa || ipa.trim().length === 0) && !providedAudioUrl)}
               className={cn(className, size === "sm" && !children ? "h-6 w-6" : "")}
               aria-label="Play IPA pronunciation (approximate)"
               type="button"

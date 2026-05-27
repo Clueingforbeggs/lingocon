@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
 
     // Convert non-svg images to webp
     if (ALLOWED_IMAGE_TYPES.includes(file.type) && file.type !== "image/svg+xml") {
-      buffer = await sharp(buffer).webp({ quality: 80 }).toBuffer()
+      buffer = Buffer.from(await sharp(buffer).webp({ quality: 80 }).toBuffer())
       ext = "webp"
       filename = `${timestamp}-${randomStr}.${ext}`
       filepath = join(uploadDir, filename)

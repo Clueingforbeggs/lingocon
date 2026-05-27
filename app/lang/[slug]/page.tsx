@@ -97,7 +97,7 @@ export async function generateMetadata({
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://lingocon.com"
   const url = `${siteUrl}/lang/${language.slug}`
-  const title = `${language.name} — Language Documentation`
+  const title = `${language.name} — Constructed Language on LingoCon`
 
   // Generate a rich description based on content
   let description = language.description
@@ -110,14 +110,31 @@ export async function generateMetadata({
     if (language._count.scriptSymbols > 0) parts.push("custom script")
 
     const contentSummary = parts.length > 0 ? ` featuring ${parts.join(", ")}` : ""
-    description = `Explore ${language.name} language documentation${contentSummary} on LingoCon.`
+    description = `Explore ${language.name}, a constructed language (conlang)${contentSummary}, documented on LingoCon — the free platform for conlang creators.`
   }
 
   const ogImageUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://lingocon.com"}/api/og/family-tree/${language.id}`
 
+  // Build OG images array — include flag first if available for Google Images association
+  const ogImages: { url: string; width: number; height: number; alt: string }[] = []
+  if (language.flagUrl) {
+    const flagFull = language.flagUrl.startsWith("http") ? language.flagUrl : `${siteUrl}${language.flagUrl}`
+    ogImages.push({ url: flagFull, width: 800, height: 600, alt: `Flag of the ${language.name} constructed language` })
+  }
+  ogImages.push({ url: ogImageUrl, width: 1200, height: 630, alt: `${language.name} language family tree on LingoCon` })
+
   return {
     title,
     description,
+    keywords: [
+      language.name,
+      `${language.name} conlang`,
+      `${language.name} constructed language`,
+      `${language.name} language`,
+      `${language.name} dictionary`,
+      `${language.name} grammar`,
+      "conlang", "constructed language", "LingoCon",
+    ],
     openGraph: {
       title,
       description,
@@ -125,20 +142,13 @@ export async function generateMetadata({
       siteName: "LingoCon",
       type: "website",
       locale: "en_US",
-      images: [
-        {
-          url: ogImageUrl,
-          width: 1200,
-          height: 630,
-          alt: `${language.name} language family tree`,
-        },
-      ],
+      images: ogImages,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [ogImageUrl],
+      images: [ogImages[0].url],
     },
     alternates: {
       canonical: url,

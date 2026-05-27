@@ -3,8 +3,12 @@ import { Suspense } from "react"
 import { SearchResults } from "./search-results"
 
 export const metadata: Metadata = {
-  title: "Search",
-  description: "Search for constructed languages, dictionary entries, and grammar documentation on LingoCon.",
+  title: "Search Conlangs — Find Constructed Languages, Dictionaries & Grammar",
+  description: "Search thousands of constructed language entries on LingoCon. Find conlangs by name, browse dictionary words, grammar pages, and language scripts created by the community.",
+  keywords: ["search conlang", "find constructed language", "conlang search", "conlang dictionary search", "LingoCon search"],
+  alternates: {
+    canonical: "https://lingocon.com/search",
+  },
 }
 
 export default function SearchPage() {

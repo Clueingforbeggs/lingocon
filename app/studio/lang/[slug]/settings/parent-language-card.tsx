@@ -188,8 +188,8 @@ export function ParentLanguageCard({
       if ('error' in result) {
         toast.error(result.error)
       } else {
-        toast.success(`Family "${result.family.name}" created!`)
-        handleSetFamily(result.family.id, result.family.name)
+        toast.success(`Family "${result.data.name}" created!`)
+        handleSetFamily(result.data.id, result.data.name)
         setNewFamilyName("")
         setShowNewFamily(false)
       }

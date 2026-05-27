@@ -49,7 +49,7 @@ export function ParadigmContentEditor({
     if (open && paradigm) {
       setCells(parseParadigmSlots(paradigm.slots).cells)
     }
-  }, [open, paradigm?.id])
+  }, [open, paradigm])
 
   if (!paradigm) return null
 

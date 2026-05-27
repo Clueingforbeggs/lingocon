@@ -25,7 +25,7 @@ import {
 import { FeaturedLanguages } from "@/components/featured-languages"
 import { Navbar } from "@/components/navbar"
 import { TopLanguagesStripe } from "@/components/top-languages-stripe"
-import { ContainerScroll } from "@/components/ui/container-scroll-animation"
+
 import { InfiniteMovingCards } from "@/components/ui/infinite-moving-cards"
 import { HeroBackground } from "@/components/hero-background"
 import { TextReveal } from "@/components/ui/text-reveal"
@@ -577,48 +577,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════
-          STUDIO PREVIEW — Real Product Screenshot
-          ═══════════════════════════════════════════════════════════ */}
-      <section className="bg-background relative -mt-20 z-10">
-        <ContainerScroll
-          titleComponent={
-            <div className="flex flex-col items-center gap-2 mb-10">
-              <Badge variant="outline" className="text-xs uppercase tracking-widest border-primary/20 bg-primary/5 text-primary">
-                The Workbench
-              </Badge>
-              <h2 className="text-4xl md:text-6xl font-serif font-medium text-foreground">
-                Your Language Studio <br />
-                <span className="text-4xl md:text-[6rem] font-bold mt-1 leading-none text-gradient block">
-                  Reimagined
-                </span>
-              </h2>
-            </div>
-          }
-        >
-          <Link
-            href={isAuthenticated ? "/dashboard" : "/login"}
-            className="w-full h-full bg-background rounded-2xl overflow-hidden flex items-center justify-center relative shadow-inner group/tablet cursor-pointer transition-all duration-500 hover:ring-1 hover:ring-primary/20"
-          >
-            {/* Real Studio Screenshot */}
-            <Image
-              src="/studio-preview.png"
-              alt="LingoCon Studio — Grammar editor with interlinear glossing, language family tree, and lexicon search"
-              fill
-              className="object-cover object-top rounded-2xl"
-              priority
-            />
 
-            {/* Overlay on Hover */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px] opacity-0 group-hover/tablet:opacity-100 transition-opacity duration-500 z-10">
-              <div className="bg-background/90 text-foreground px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 transform translate-y-4 group-hover/tablet:translate-y-0 transition-transform duration-500 font-medium">
-                {isAuthenticated ? "Open Studio Dashboard" : "Sign In to Start Building"}
-                <ArrowRight className="h-4 w-4" />
-              </div>
-            </div>
-          </Link>
-        </ContainerScroll>
-      </section>
 
       {/* ═══════════════════════════════════════════════════════════
           FEATURES GRID — Bento Cards with Scroll Reveals

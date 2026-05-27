@@ -94,7 +94,7 @@ export async function bulkUpdateDictionaryEntries(
 
     if (result.slug) revalidateDictionary(result.slug)
 
-    return { success: true as const, updatedCount: result.count }
+    return { success: true as const, data: { updatedCount: result.count } }
   } catch (error) {
     return handleError(error, "Failed to bulk update dictionary entries")
   }
@@ -142,7 +142,7 @@ export async function bulkDeleteDictionaryEntries(entryIds: string[], languageId
 
     if (result.slug) revalidateDictionary(result.slug)
 
-    return { success: true as const, deletedCount: result.count }
+    return { success: true as const, data: { deletedCount: result.count } }
   } catch (error) {
     return handleError(error, "Failed to bulk delete dictionary entries")
   }
@@ -166,7 +166,7 @@ export async function deleteAllDictionaryEntries(languageId: string) {
 
     if (result.slug) revalidateDictionary(result.slug)
 
-    return { success: true as const, deletedCount: result.count }
+    return { success: true as const, data: { deletedCount: result.count } }
   } catch (error) {
     return handleError(error, "Failed to delete all dictionary entries")
   }

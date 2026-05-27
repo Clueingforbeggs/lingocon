@@ -104,6 +104,7 @@ function escapeXml(str: string): string {
 }
 
 const ALLOWED_SPEEDS = ["x-slow", "slow", "medium", "fast", "x-fast"]
+const SPEED_PERCENTAGE_REGEX = /^\d{1,3}%$/
 
 async function synthesizeIPA(ipa: string, speed: string = "slow", voiceId?: string): Promise<{ audioUrl?: string; error?: string }> {
   try {
@@ -111,7 +112,8 @@ async function synthesizeIPA(ipa: string, speed: string = "slow", voiceId?: stri
     const cleanedIPA = ipa.replace(/^\/|\/$/g, "").trim()
 
     // Validate speed parameter
-    const safeSpeed = ALLOWED_SPEEDS.includes(speed) ? speed : "slow"
+    const safeSpeed = ALLOWED_SPEEDS.includes(speed) ? speed : 
+      SPEED_PERCENTAGE_REGEX.test(speed) ? speed : "slow"
 
     // Check if AWS credentials are configured
     if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {

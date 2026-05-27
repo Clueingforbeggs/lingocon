@@ -119,9 +119,23 @@ const nextAuthConfig = {
     signIn: "/login",
   },
   callbacks: {
-    jwt: async ({ token, user }: { token: JWT; user?: User | null }) => {
+    jwt: async ({ token, user, trigger }: { token: JWT; user?: User | null; trigger?: string }) => {
       if (user?.id) {
         token.id = user.id
+        token.name = user.name
+        token.image = user.image
+      }
+      
+      // Re-fetch from DB when session is updated (e.g. after profile edit)
+      if (trigger === "update" && token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { name: true, image: true },
+        })
+        if (dbUser) {
+          token.name = dbUser.name
+          token.image = dbUser.image
+        }
       }
       return token
     },
@@ -135,7 +149,9 @@ const nextAuthConfig = {
       // `token.id` is only set after sign-in; guard avoids assigning `undefined` to `session.user.id`.
       const userId = token.id
       if (session.user && userId) {
-        session.user.id = userId
+        session.user.id = userId as string
+        if (token.name) session.user.name = token.name as string
+        if (token.image) session.user.image = token.image as string
       }
       return session
     },

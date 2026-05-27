@@ -1,4 +1,5 @@
 import { memo } from "react"
+import Image from "next/image"
 import { Handle, Position } from "reactflow"
 import { Card } from "@/components/ui/card"
 import { Crown, BookOpen, ExternalLink, BookCopy } from "lucide-react"
@@ -37,9 +38,9 @@ export const LanguageNode = memo(({ data, selected }: LanguageNodeProps) => {
 
       <div className="flex flex-col items-center text-center gap-2">
         {data.isReadOnly && data.owner ? (
-          <div className="h-8 w-8 rounded-full overflow-hidden border border-border/50 -mt-1 mb-1 shadow-sm">
+          <div className="h-8 w-8 rounded-full overflow-hidden border border-border/50 -mt-1 mb-1 shadow-sm relative">
             {data.owner.image ? (
-              <img src={data.owner.image} alt="" className="w-full h-full object-cover" />
+              <Image src={data.owner.image} alt="" fill className="object-cover" />
             ) : (
               <div className="w-full h-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
                 {data.owner.name?.[0]?.toUpperCase() || "?"}

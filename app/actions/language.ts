@@ -8,6 +8,7 @@ import { revalidateBrowse, revalidateLanguage } from "@/lib/utils/revalidation"
 import { checkLanguageBadges } from "@/app/actions/badge"
 import type { CreateLanguageInput, UpdateLanguageInput } from "@/lib/validations/language"
 import * as languageService from "@/lib/services/language"
+import { prisma } from "@/lib/prisma"
 
 function handleError(error: unknown, fallbackMessage: string) {
   if (error instanceof ZodError) return { error: error.issues[0]?.message || "Validation failed" }
@@ -36,14 +37,27 @@ export async function updateLanguage(input: UpdateLanguageInput) {
   if (!userId) return { error: "Unauthorized" }
 
   try {
+    // Get current slug for revalidation if it's changing
+    const currentLang = input.slug ? await prisma.language.findUnique({
+      where: { id: input.id },
+      select: { slug: true }
+    }) : null;
+
     const updated = await languageService.updateLanguage(input, userId)
     revalidatePath("/dashboard")
     revalidateBrowse()
+    
+    // Revalidate old slug if it changed
+    if (currentLang && currentLang.slug !== updated.slug) {
+      revalidateLanguage(currentLang.slug)
+    }
+    
     revalidateLanguage(updated.slug)
+    
     if (input.visibility === "PUBLIC") {
       checkLanguageBadges(userId).catch(console.error)
     }
-    return { success: true as const, data: updated }
+    return { success: true as const, data: updated, slugChanged: currentLang && currentLang.slug !== updated.slug }
   } catch (error) {
     return handleError(error, "Failed to update language")
   }

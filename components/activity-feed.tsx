@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getUserActivities } from "@/app/actions/activity"
+import { getFeedActivitiesForUser, getActivitiesForUser } from "@/lib/utils/activity"
 import { formatDistanceToNow } from "date-fns"
 import {
   Activity,
@@ -25,6 +26,7 @@ interface ActivityFeedProps {
   userId?: string
   activities?: ActivityWithRelations[]
   showLanguage?: boolean
+  mode?: "user" | "feed"
 }
 
 export type ActivityWithRelations = {
@@ -43,15 +45,18 @@ export type ActivityWithRelations = {
   }
 }
 
-export function ActivityFeed({ userId, activities: initialActivities, showLanguage = true }: ActivityFeedProps) {
+export function ActivityFeed({ userId, activities: initialActivities, showLanguage = true, mode = "user" }: ActivityFeedProps) {
   const [activities, setActivities] = useState<ActivityWithRelations[]>(initialActivities || [])
   const [loading, setLoading] = useState(!initialActivities && !!userId)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState((initialActivities?.length ?? 0) >= (mode === "feed" ? 50 : 20))
 
   useEffect(() => {
     if (initialActivities) {
       setActivities(initialActivities)
       setLoading(false)
+      setHasMore(initialActivities.length >= (mode === "feed" ? 50 : 20))
       return
     }
 
@@ -60,12 +65,14 @@ export function ActivityFeed({ userId, activities: initialActivities, showLangua
     async function loadActivities() {
       setLoading(true)
       try {
-        const result = await getUserActivities(userId!)
-        if (result.success && result.data) {
-          // @ts-ignore - Date serialization issue from server action
-          setActivities(result.data)
+        if (mode === "feed") {
+           const result = await getFeedActivitiesForUser(userId!, 50)
+           setActivities(result as any)
+           setHasMore(result.length >= 50)
         } else {
-          setError("Failed to load activities")
+           const result = await getActivitiesForUser(userId!, 20)
+           setActivities(result as any)
+           setHasMore(result.length >= 20)
         }
       } catch (err) {
         console.error(err)
@@ -76,7 +83,38 @@ export function ActivityFeed({ userId, activities: initialActivities, showLangua
     }
 
     loadActivities()
-  }, [userId, initialActivities])
+  }, [userId, initialActivities, mode])
+
+  const handleLoadMore = async () => {
+    if (!userId || loadingMore || !hasMore) return
+    
+    setLoadingMore(true)
+    const cursor = activities[activities.length - 1]?.id
+    
+    try {
+      if (mode === "feed") {
+        const result = await getFeedActivitiesForUser(userId, 50, cursor)
+        if (result.length > 0) {
+          setActivities(prev => [...prev, ...result as any])
+          setHasMore(result.length >= 50)
+        } else {
+          setHasMore(false)
+        }
+      } else {
+        const result = await getActivitiesForUser(userId, 20, cursor)
+        if (result.length > 0) {
+          setActivities(prev => [...prev, ...result as any])
+          setHasMore(result.length >= 20)
+        } else {
+          setHasMore(false)
+        }
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -144,6 +182,19 @@ export function ActivityFeed({ userId, activities: initialActivities, showLangua
           </div>
         </div>
       ))}
+      
+      {hasMore && userId && (
+        <div className="pt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            className="text-sm text-primary hover:underline disabled:opacity-50"
+          >
+            {loadingMore ? "Loading..." : "Load More"}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

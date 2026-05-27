@@ -75,7 +75,7 @@ export async function createFamily(data: {
   try {
     const family = await familyService.createFamily(data, userId)
     revalidateFamilies()
-    return { success: true as const, family }
+    return { success: true as const, data: family }
   } catch (error) {
     return handleError(error, "Failed to create family")
   }
@@ -159,7 +159,7 @@ export async function deriveWords(
   try {
     const result = await familyService.deriveWords(sourceLanguageId, targetLanguageId, entryIds, userId)
     revalidateFamilies()
-    return { success: true as const, count: result.count }
+    return { success: true as const, data: { count: result.count } }
   } catch (error) {
     return handleError(error, "Failed to derive words")
   }
@@ -208,7 +208,7 @@ export async function createProtoWord(
   try {
     const word = await familyService.createProtoWord(familyId, data, userId)
     revalidatePath("/dashboard/families")
-    return { success: true as const, word }
+    return { success: true as const, data: word }
   } catch (error) {
     return handleError(error, "Failed to create proto-word")
   }
@@ -243,7 +243,7 @@ export async function deriveFromProto(protoWordIds: string[], targetLanguageId: 
   try {
     const result = await familyService.deriveFromProto(protoWordIds, targetLanguageId, userId)
     revalidateFamilies()
-    return { success: true as const, count: result.count }
+    return { success: true as const, data: { count: result.count } }
   } catch (error) {
     return handleError(error, "Failed to derive from proto-vocabulary")
   }

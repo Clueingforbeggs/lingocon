@@ -19,6 +19,14 @@ export async function createLanguage(input: CreateLanguageInput, userId: string)
     throw new ConflictError("A language with this slug already exists")
   }
 
+  // Also check if someone else has reserved this slug
+  const reserved = await prisma.slugReservation.findUnique({
+    where: { slug: validated.slug },
+  })
+  if (reserved && reserved.reservedUntil > new Date()) {
+    throw new ConflictError("This slug is temporarily reserved. Please try a different one.")
+  }
+
   return prisma.language.create({
     data: {
       name: validated.name,
@@ -40,6 +48,59 @@ export async function updateLanguage(input: UpdateLanguageInput, userId: string)
   }
 
   const updateData: Record<string, unknown> = {}
+  
+  if (validated.slug !== undefined) {
+    // Need current slug to see if it actually changed
+    const currentLang = await prisma.language.findUnique({
+      where: { id: validated.id },
+      select: { slug: true }
+    })
+    
+    if (currentLang && currentLang.slug !== validated.slug) {
+      // 1. Check if new slug is already taken by a language
+      const existing = await prisma.language.findUnique({
+        where: { slug: validated.slug }
+      })
+      if (existing) throw new ConflictError("A language with this slug already exists")
+
+      // 2. Check if new slug is reserved
+      const reserved = await prisma.slugReservation.findUnique({
+        where: { slug: validated.slug }
+      })
+      if (reserved && reserved.reservedUntil > new Date()) {
+        throw new ConflictError("This slug is temporarily reserved. Please try a different one.")
+      }
+      
+      // 3. Clear any expired reservations for the old slug
+      await prisma.slugReservation.deleteMany({
+        where: {
+          slug: currentLang.slug,
+          reservedUntil: { lte: new Date() }
+        }
+      })
+      
+      // 4. Reserve the old slug for 180 days
+      const reservedUntil = new Date()
+      reservedUntil.setDate(reservedUntil.getDate() + 180)
+      
+      await prisma.slugReservation.upsert({
+        where: { slug: currentLang.slug },
+        update: {
+          languageId: validated.id,
+          reservedUntil
+        },
+        create: {
+          slug: currentLang.slug,
+          languageId: validated.id,
+          reservedUntil
+        }
+      })
+      
+      updateData.slug = validated.slug
+      updateData.lastSlugChangedAt = new Date()
+    }
+  }
+
   if (validated.name !== undefined) updateData.name = validated.name
   if (validated.description !== undefined) updateData.description = validated.description || null
   if (validated.visibility !== undefined) updateData.visibility = validated.visibility

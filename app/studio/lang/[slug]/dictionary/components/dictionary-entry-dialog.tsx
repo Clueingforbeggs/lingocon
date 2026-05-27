@@ -21,7 +21,8 @@ import { cn } from "@/lib/utils"
 import { ContextualHelp } from "@/components/contextual-help"
 import { StatusIndicator } from "@/components/status-indicator"
 import { useAutoSave } from "@/lib/hooks/use-auto-save"
-import { validateStringAgainstAlphabet } from "@/lib/utils/alphabet-validation"
+import { validateStringAgainstAlphabet, validatePhonotactics } from "@/lib/utils/alphabet-validation"
+import { AudioRecorder } from "@/components/audio-recorder"
 import type { DictionaryEntry, ScriptSymbol } from "@prisma/client"
 
 interface DictionaryEntryDialogProps {
@@ -33,6 +34,7 @@ interface DictionaryEntryDialogProps {
   mode: "create" | "edit"
   symbols: ScriptSymbol[]
   allowsDiacritics?: boolean
+  metadata?: any
 }
 
 export function DictionaryEntryDialog({
@@ -44,11 +46,13 @@ export function DictionaryEntryDialog({
   mode,
   symbols,
   allowsDiacritics = false,
+  metadata,
 }: DictionaryEntryDialogProps) {
   const [formData, setFormData] = useState({
     lemma: "",
     gloss: "",
     ipa: "",
+    audioUrl: null as string | null,
     partOfSpeech: "",
     etymology: "",
     relatedWords: [] as string[],
@@ -61,6 +65,11 @@ export function DictionaryEntryDialog({
     formData.lemma && symbols && symbols.length > 0
       ? validateStringAgainstAlphabet(formData.lemma, symbols, { allowsDiacritics })
       : []
+
+  const textToValidate = formData.ipa || formData.lemma
+  const phonotacticsValid = textToValidate && metadata?.syllableStructure && metadata?.consonants && metadata?.vowels
+    ? validatePhonotactics(textToValidate, metadata.syllableStructure, metadata.consonants, metadata.vowels)
+    : true
 
   const { errors, touched, handleBlur, handleChange, validateForm } = useFormValidation(
     formData,
@@ -83,6 +92,7 @@ export function DictionaryEntryDialog({
         lemma: initialData.lemma,
         gloss: initialData.gloss,
         ipa: initialData.ipa || "",
+        audioUrl: (initialData as any).audioUrl || null,
         partOfSpeech: initialData.partOfSpeech || "",
         etymology: initialData.etymology || "",
         relatedWords: Array.isArray(initialData.relatedWords)
@@ -98,6 +108,7 @@ export function DictionaryEntryDialog({
         lemma: "",
         gloss: "",
         ipa: "",
+        audioUrl: null,
         partOfSpeech: "",
         etymology: "",
         relatedWords: [],
@@ -274,6 +285,14 @@ export function DictionaryEntryDialog({
                   </Button>
                 </div>
               )}
+              {!errors.lemma && alphabetWarnings.length === 0 && !phonotacticsValid && (
+                <div className="flex items-center gap-1.5 p-2 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs mt-2">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Doesn&apos;t match your syllable structure: <span className="font-mono font-semibold">{metadata?.syllableStructure}</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -329,6 +348,13 @@ export function DictionaryEntryDialog({
                     errors.ipa && touched.ipa && "border-destructive focus-visible:ring-destructive"
                   )}
                 />
+                <div className="pt-2">
+                  <AudioRecorder
+                    initialAudioUrl={formData.audioUrl}
+                    onRecordingComplete={(url) => handleFieldChange("audioUrl", url)}
+                    onRecordingDelete={() => handleFieldChange("audioUrl", "")}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

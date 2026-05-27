@@ -37,7 +37,6 @@ export async function getUserActivities(userId: string, limit = 10) {
     } catch (error) {
         console.error("Error fetching activities:", error)
         return {
-            success: false,
             error: "Failed to fetch activities",
         }
     }

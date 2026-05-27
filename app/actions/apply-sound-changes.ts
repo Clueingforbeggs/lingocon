@@ -6,13 +6,12 @@ import { revalidatePath } from "next/cache"
 import { parseRules, applyPipeline } from "@/lib/utils/sound-change"
 import { createActivity } from "@/lib/utils/activity"
 
-export type ApplySoundChangesResult = {
-  success: true
+import { ActionResult } from "@/lib/types/action-result"
+
+export type ApplySoundChangesResult = ActionResult<{
   applied: number
   unchanged: number
-} | {
-  error: string
-}
+}>
 
 /**
  * Apply the language's saved sound change rules to every dictionary entry,
@@ -88,7 +87,7 @@ export async function applySoundChangesToDictionary(
   }
 
   if (updates.length === 0) {
-    return { success: true, applied: 0, unchanged: entries.length }
+    return { success: true, data: { applied: 0, unchanged: entries.length } }
   }
 
   // Apply all updates in a transaction
@@ -116,7 +115,9 @@ export async function applySoundChangesToDictionary(
 
   return {
     success: true,
-    applied: updates.length,
-    unchanged: entries.length - updates.length,
+    data: {
+      applied: updates.length,
+      unchanged: entries.length - updates.length,
+    }
   }
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { GitBranch, Crown, ChevronRight, ChevronDown, Share2, Check, Maximize2, Minimize2 } from "lucide-react"
@@ -155,7 +156,7 @@ function TreeNode({
               {node.owner && (
                  <div className="flex items-center gap-1 text-[10px] bg-secondary px-1.5 py-0.5 rounded-sm font-normal text-muted-foreground w-fit shrink-0">
                    {node.owner.image ? (
-                     <img src={node.owner.image} alt="" className="w-3 h-3 rounded-full object-cover" />
+                     <Image src={node.owner.image} alt="" width={12} height={12} className="w-3 h-3 rounded-full object-cover" />
                    ) : (
                      <div className="w-3 h-3 rounded-full bg-primary/20 flex items-center justify-center text-[7px] font-bold text-primary">
                        {node.owner.name?.[0]?.toUpperCase() || "?"}

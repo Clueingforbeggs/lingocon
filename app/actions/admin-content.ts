@@ -32,7 +32,7 @@ export async function forceUnpublishArticle(articleId: string) {
     revalidatePath(`/admin/content`)
     revalidatePath(`/lang/${article.language.slug}/articles`)
 
-    return { success: true, article }
+    return { success: true, data: article }
 }
 
 /**
@@ -59,7 +59,7 @@ export async function forceUnpublishText(textId: string) {
     revalidatePath(`/admin/content`)
     revalidatePath(`/lang/${text.language.slug}/texts`)
 
-    return { success: true, text }
+    return { success: true, data: text }
 }
 
 /**
@@ -87,7 +87,7 @@ export async function forceLanguageVisibility(
     revalidatePath(`/admin/languages/${languageId}`)
     revalidatePath(`/browse`)
 
-    return { success: true, language }
+    return { success: true, data: language }
 }
 
 /**

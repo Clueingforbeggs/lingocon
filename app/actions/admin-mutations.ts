@@ -98,10 +98,12 @@ export async function pruneSessions() {
 
     return {
         success: true,
-        count: sessions.count + tokens.count,
-        details: {
-            sessions: sessions.count,
-            tokens: tokens.count
+        data: {
+            count: sessions.count + tokens.count,
+            details: {
+                sessions: sessions.count,
+                tokens: tokens.count
+            }
         }
     }
 }

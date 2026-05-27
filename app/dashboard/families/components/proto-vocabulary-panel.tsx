@@ -149,7 +149,7 @@ export function ProtoVocabularyPanel({
           targetLanguages.find((l) => l.id === selectedTarget)?.name ||
           "language"
         toast.success(
-          `Derived ${result.count} word${result.count !== 1 ? "s" : ""} into ${targetName}!`
+          `Derived ${result.data?.count} word${result.data?.count !== 1 ? "s" : ""} into ${targetName}!`
         )
         setSelectedIds(new Set())
         router.refresh()

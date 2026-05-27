@@ -19,7 +19,6 @@ export async function getPlatformUpdates(limit = 5) {
     } catch (error) {
         console.error("Error fetching platform updates:", error)
         return {
-            success: false,
             error: "Failed to fetch platform updates",
         }
     }
@@ -50,7 +49,6 @@ export async function createPlatformUpdate(data: {
     } catch (error) {
         console.error("Error creating platform update:", error)
         return {
-            success: false,
             error: "Failed to create platform update",
         }
     }

@@ -252,10 +252,15 @@ export default async function DashboardPage() {
             <SupportWidget />
 
             <div className="space-y-4">
-              <h2 className="text-lg font-medium flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-violet-500" />
-                Recent Activity
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-medium flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-violet-500" />
+                  Recent Activity
+                </h2>
+                <Link href="/dashboard/feed" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  View feed →
+                </Link>
+              </div>
               <div className="bg-card border border-border/50 rounded-xl p-4 min-h-[280px]">
                 {activities.length > 0 ? (
                   <ActivityFeed activities={activities} showLanguage={true} />

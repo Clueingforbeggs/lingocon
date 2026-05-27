@@ -8,6 +8,7 @@ import {
   type CreateDictionaryEntryInput,
   type UpdateDictionaryEntryInput,
 } from "@/lib/validations/dictionary-entry"
+import { validatePhonotactics } from "@/lib/utils/alphabet-validation"
 
 export async function createEntry(input: CreateDictionaryEntryInput, userId: string) {
   const sterilized = JSON.parse(JSON.stringify(input))
@@ -18,11 +19,27 @@ export async function createEntry(input: CreateDictionaryEntryInput, userId: str
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
 
+  const language = await prisma.language.findUnique({
+    where: { id: validated.languageId },
+    select: { metadata: true },
+  })
+
+  if (language?.metadata) {
+    const metadata = language.metadata as any
+    const textToValidate = validated.ipa || validated.lemma
+    if (metadata.syllableStructure && metadata.consonants && metadata.vowels) {
+      if (!validatePhonotactics(textToValidate, metadata.syllableStructure, metadata.consonants, metadata.vowels)) {
+        throw new ValidationError(`"${textToValidate}" does not match the language's syllable structure (${metadata.syllableStructure})`)
+      }
+    }
+  }
+
   return prisma.dictionaryEntry.create({
     data: {
       lemma: validated.lemma,
       gloss: validated.gloss,
       ipa: validated.ipa || null,
+      audioUrl: validated.audioUrl || null,
       partOfSpeech: validated.partOfSpeech || null,
       etymology: validated.etymology || null,
       relatedWords: validated.relatedWords ? (validated.relatedWords as any) : null,
@@ -47,10 +64,26 @@ export async function updateEntry(input: UpdateDictionaryEntryInput, userId: str
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
 
+  const language = await prisma.language.findUnique({
+    where: { id: validated.languageId },
+    select: { metadata: true },
+  })
+
+  if (language?.metadata) {
+    const metadata = language.metadata as any
+    const textToValidate = validated.ipa !== undefined ? validated.ipa || validated.lemma : validated.lemma
+    if (textToValidate && metadata.syllableStructure && metadata.consonants && metadata.vowels) {
+      if (!validatePhonotactics(textToValidate, metadata.syllableStructure, metadata.consonants, metadata.vowels)) {
+        throw new ValidationError(`"${textToValidate}" does not match the language's syllable structure (${metadata.syllableStructure})`)
+      }
+    }
+  }
+
   const updateData: Record<string, unknown> = {}
   if (validated.lemma !== undefined) updateData.lemma = validated.lemma
   if (validated.gloss !== undefined) updateData.gloss = validated.gloss
   if (validated.ipa !== undefined) updateData.ipa = validated.ipa || null
+  if (validated.audioUrl !== undefined) updateData.audioUrl = validated.audioUrl || null
   if (validated.partOfSpeech !== undefined) updateData.partOfSpeech = validated.partOfSpeech || null
   if (validated.etymology !== undefined) updateData.etymology = validated.etymology || null
   if (validated.relatedWords !== undefined)

@@ -24,7 +24,7 @@ export function SystemMaintenanceCard({
         setPruneResult(null)
         try {
             const result = await pruneSessions()
-            setPruneResult(`Cleared ${result.count} expired items`)
+            setPruneResult(`Cleared ${result.data.count} expired items`)
             setTimeout(() => setPruneResult(null), 3000)
         } catch (error) {
             console.error(error)

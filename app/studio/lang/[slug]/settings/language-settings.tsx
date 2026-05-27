@@ -89,6 +89,7 @@ export function LanguageSettings({ language, languageSlug, dictionaryEntries, is
 
   const [formData, setFormData] = useState({
     name: language.name,
+    slug: language.slug,
     description: language.description || "",
     visibility: language.visibility as "PRIVATE" | "UNLISTED" | "PUBLIC",
     flagUrl: language.flagUrl || "",
@@ -113,6 +114,7 @@ export function LanguageSettings({ language, languageSlug, dictionaryEntries, is
       const updateData = {
         id: String(language.id),
         name: String(formData.name),
+        slug: String(formData.slug),
         visibility: formData.visibility,
         description: formData.description,
         ...(formData.flagUrl ? { flagUrl: formData.flagUrl } : {}),
@@ -140,7 +142,11 @@ export function LanguageSettings({ language, languageSlug, dictionaryEntries, is
         toast.error(result.error)
       } else {
         toast.success("Settings updated successfully")
-        router.refresh()
+        if (result.slugChanged) {
+          router.push(`/studio/lang/${formData.slug}/settings`)
+        } else {
+          router.refresh()
+        }
       }
     })
   }
@@ -175,12 +181,14 @@ export function LanguageSettings({ language, languageSlug, dictionaryEntries, is
             <Label htmlFor="slug">Slug</Label>
             <Input
               id="slug"
-              value={language.slug}
-              disabled
-              className="bg-muted"
+              value={formData.slug}
+              onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+              disabled={!isOwner || isPending}
+              required
+              maxLength={100}
             />
             <p className="text-xs text-muted-foreground">
-              Slug cannot be changed after creation
+              Changing your slug will reserve the old one for 180 days, redirecting visitors to your new URL.
             </p>
           </div>
 

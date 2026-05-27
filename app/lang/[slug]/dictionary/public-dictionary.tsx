@@ -224,10 +224,10 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
                       </TableCell>
                       <TableCell>{entry.gloss}</TableCell>
                       <TableCell className="font-mono text-sm">
-                        {entry.ipa ? (
+                        {entry.ipa || (entry as any).audioUrl ? (
                           <span className="flex items-center gap-2">
-                            <span>/{entry.ipa}/</span>
-                            <IPASpeaker ipa={entry.ipa} size="sm" voiceId={voiceId} speed={speed} />
+                            {entry.ipa && <span>/{entry.ipa}/</span>}
+                            <IPASpeaker ipa={entry.ipa || undefined} audioUrl={(entry as any).audioUrl} size="sm" voiceId={voiceId} speed={speed} />
                           </span>
                         ) : (
                           "-"
@@ -269,12 +269,12 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
                     </p>
                   )}
                 </div>
-                {(selectedEntry.ipa || selectedEntry.partOfSpeech) && (
+                {(selectedEntry.ipa || (selectedEntry as any).audioUrl || selectedEntry.partOfSpeech) && (
                   <div className="flex items-center gap-3">
-                    {selectedEntry.ipa && (
+                    {(selectedEntry.ipa || (selectedEntry as any).audioUrl) && (
                       <div className="flex items-center gap-2 text-sm font-mono bg-muted/50 px-2 py-1 rounded">
-                        <span>/{selectedEntry.ipa}/</span>
-                        <IPASpeaker ipa={selectedEntry.ipa} size="sm" voiceId={voiceId} speed={speed} />
+                        {selectedEntry.ipa && <span>/{selectedEntry.ipa}/</span>}
+                        <IPASpeaker ipa={selectedEntry.ipa || undefined} audioUrl={(selectedEntry as any).audioUrl} size="sm" voiceId={voiceId} speed={speed} />
                       </div>
                     )}
                     {selectedEntry.partOfSpeech && (

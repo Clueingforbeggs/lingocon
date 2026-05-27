@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Card } from "@/components/ui/card"
@@ -256,7 +257,7 @@ export function FamilyManager({ families, unassignedLanguages }: FamilyManagerPr
             {unassignedLanguages.map(lang => (
               <Badge key={lang.id} variant="secondary" className="gap-1.5 py-1 px-2.5 text-sm">
                 {lang.flagUrl && (
-                  <img src={lang.flagUrl} alt="" className="h-4 w-4 rounded-full object-cover" />
+                  <Image src={lang.flagUrl} alt="" width={16} height={16} className="h-4 w-4 rounded-full object-cover" />
                 )}
                 {lang.name}
                 <span className="text-xs text-muted-foreground">({lang._count.dictionaryEntries})</span>
@@ -345,7 +346,7 @@ export function FamilyManager({ families, unassignedLanguages }: FamilyManagerPr
                     <div key={lang.id} className="flex items-center justify-between py-1.5 px-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors group">
                       <div className="flex items-center gap-2">
                         {lang.flagUrl ? (
-                          <img src={lang.flagUrl} alt="" className="h-5 w-5 rounded-full object-cover" />
+                          <Image src={lang.flagUrl} alt="" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
                         ) : (
                           <Globe className="h-4 w-4 text-muted-foreground" />
                         )}
@@ -402,7 +403,7 @@ export function FamilyManager({ families, unassignedLanguages }: FamilyManagerPr
                         >
                           <div className="flex items-center gap-2">
                             {lang.flagUrl ? (
-                              <img src={lang.flagUrl} alt="" className="h-5 w-5 rounded-full object-cover" />
+                              <Image src={lang.flagUrl} alt="" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
                             ) : (
                               <Globe className="h-4 w-4 text-muted-foreground" />
                             )}

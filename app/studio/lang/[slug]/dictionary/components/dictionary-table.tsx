@@ -215,11 +215,12 @@ export function DictionaryTable({
                 </TableCell>
                 <TableCell>{entry.gloss}</TableCell>
                 <TableCell className="font-mono text-sm">
-                  {entry.ipa ? (
+                  {entry.ipa || (entry as any).audioUrl ? (
                     <span className="flex items-center gap-2">
-                      <span>/{entry.ipa}/</span>
+                      {entry.ipa && <span>/{entry.ipa}/</span>}
                       <IPASpeaker
-                        ipa={entry.ipa}
+                        ipa={entry.ipa || undefined}
+                        audioUrl={(entry as any).audioUrl}
                         size="sm"
                         voiceId={ttsSettings?.voiceId}
                         speed={ttsSettings?.speed}

@@ -195,6 +195,7 @@ export function DictionaryManager({
       gloss: String(data.gloss),
       languageId,
       ipa: data.ipa || null,
+      audioUrl: data.audioUrl || null,
       partOfSpeech: data.partOfSpeech || null,
       etymology: data.etymology || null,
       notes: data.notes || null,
@@ -234,6 +235,7 @@ export function DictionaryManager({
       gloss: String(data.gloss),
       languageId,
       ipa: data.ipa || null,
+      audioUrl: data.audioUrl || null,
       partOfSpeech: data.partOfSpeech || null,
       etymology: data.etymology || null,
       notes: data.notes || null,
@@ -263,6 +265,7 @@ export function DictionaryManager({
       gloss: String(data.gloss),
       languageId,
       ipa: data.ipa || null,
+      audioUrl: data.audioUrl || null,
       partOfSpeech: data.partOfSpeech || null,
       etymology: data.etymology || null,
       notes: data.notes || null,
@@ -340,7 +343,7 @@ export function DictionaryManager({
     if ('error' in result) {
       toast.error(result.error)
     } else {
-      toast.success(`Deleted ${result.deletedCount} entries`)
+      toast.success(`Deleted ${result.data?.deletedCount} entries`)
       setIsBulkDeleteOpen(false)
       setSelectedEntries(new Set())
       startTransition(() => {
@@ -355,7 +358,7 @@ export function DictionaryManager({
     if ('error' in result) {
       toast.error(result.error)
     } else {
-      toast.success(`Deleted all ${result.deletedCount} entries`)
+      toast.success(`Deleted all ${result.data?.deletedCount} entries`)
       setIsDeleteAllOpen(false)
       setSelectedEntries(new Set())
       startTransition(() => {
@@ -664,6 +667,7 @@ export function DictionaryManager({
         mode="create"
         symbols={symbols}
         allowsDiacritics={allowsDiacritics}
+        metadata={metadata}
         initialData={prefillData ? prefillData as any : undefined}
       />
 
@@ -676,6 +680,7 @@ export function DictionaryManager({
         mode="edit"
         symbols={symbols}
         allowsDiacritics={allowsDiacritics}
+        metadata={metadata}
       />
 
       <DeleteConfirmDialog

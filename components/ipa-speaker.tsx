@@ -14,12 +14,13 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 interface IPASpeakerProps {
-  ipa: string
+  ipa?: string
   className?: string
   size?: "sm" | "md" | "lg"
   variant?: "ghost" | "outline" | "default"
   voiceId?: string
   speed?: string
+  audioUrl?: string | null
   children?: React.ReactNode
 }
 
@@ -30,6 +31,7 @@ export function IPASpeaker({
   variant = "ghost",
   voiceId,
   speed,
+  audioUrl: providedAudioUrl,
   children,
 }: IPASpeakerProps) {
   const [loading, setLoading] = useState(false)
@@ -51,8 +53,21 @@ export function IPASpeaker({
   }, [audioUrl])
 
   const handlePlay = async () => {
+    if (providedAudioUrl) {
+      setAudioUrl(providedAudioUrl)
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.play().catch((err) => {
+            console.error("Error playing audio:", err)
+            toast.error("Could not play audio. Please check your browser settings.")
+          })
+        }
+      }, 100)
+      return
+    }
+
     if (!ipa || ipa.trim().length === 0) {
-      toast.error("No IPA pronunciation available")
+      toast.error("No pronunciation available")
       return
     }
 

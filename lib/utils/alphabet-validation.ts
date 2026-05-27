@@ -1,3 +1,5 @@
+import { parseSyllableStructure } from "./word-generator"
+
 // Minimal interface needed for validation
 interface AlphabetSymbol {
     symbol: string
@@ -124,5 +126,47 @@ export function validateStringAgainstAlphabet(
 
     // Remove duplicates
     return Array.from(new Set(invalidChars))
+}
+
+export function validatePhonotactics(
+    str: string,
+    syllableStructure?: string | null,
+    consonants?: string[] | null,
+    vowels?: string[] | null
+): boolean {
+    if (!str || !syllableStructure || !consonants?.length || !vowels?.length) return true // Cannot validate
+
+    // Basic regex conversion
+    // e.g., (C)V(C) -> (C)?V(C)?
+    // C -> (p|t|k)
+    // V -> (a|e|i)
+    
+    // Sort to match longest phonemes first (digraphs)
+    const sortedC = [...consonants].sort((a,b) => b.length - a.length).map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    const sortedV = [...vowels].sort((a,b) => b.length - a.length).map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    
+    const cGroup = `(${sortedC.join('|')})`
+    const vGroup = `(${sortedV.join('|')})`
+    
+    const slots = parseSyllableStructure(syllableStructure)
+    if (slots.length === 0) return true
+    
+    let syllableRegexStr = ""
+    for (const slot of slots) {
+        if (slot.type === "C") {
+            syllableRegexStr += cGroup + (slot.optional ? "?" : "")
+        } else if (slot.type === "V") {
+            syllableRegexStr += vGroup + (slot.optional ? "?" : "")
+        }
+    }
+    
+    // The word must be composed entirely of these syllables
+    const wordRegex = new RegExp(`^(${syllableRegexStr})+$`, 'i')
+    
+    // Strip whitespace and punctuation before checking
+    const cleanStr = str.replace(/[\s\d\p{P}\p{S}]+/gu, '')
+    if (!cleanStr) return true // only punctuation
+    
+    return wordRegex.test(cleanStr)
 }
 

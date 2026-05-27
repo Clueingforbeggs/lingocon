@@ -157,7 +157,7 @@ export function SoundChangeEditor({
         toast.error(result.error)
       } else {
         toast.success(
-          `Applied to dictionary: ${result.applied} entr${result.applied === 1 ? "y" : "ies"} updated, ${result.unchanged} unchanged`
+          `Applied to dictionary: ${result.data.applied} entr${result.data.applied === 1 ? "y" : "ies"} updated, ${result.data.unchanged} unchanged`
         )
         startTransition(() => router.refresh())
       }

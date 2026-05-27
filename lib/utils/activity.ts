@@ -53,7 +53,7 @@ export async function getActivitiesForLanguage(
   })
 }
 
-export async function getActivitiesForUser(userId: string, limit: number = 20) {
+export async function getActivitiesForUser(userId: string, limit: number = 20, cursor?: string) {
   return prisma.activity.findMany({
     where: { userId },
     include: {
@@ -75,6 +75,7 @@ export async function getActivitiesForUser(userId: string, limit: number = 20) {
     },
     orderBy: { createdAt: "desc" },
     take: limit,
+    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
   })
 }
 
@@ -130,6 +131,43 @@ export async function getRecentActivitiesForUserLanguages(
     },
     orderBy: { createdAt: "desc" },
     take: limit,
+  })
+}
+
+export async function getFeedActivitiesForUser(userId: string, limit: number = 50, cursor?: string) {
+  const follows = await prisma.follow.findMany({
+    where: { followerId: userId },
+    select: { followingId: true }
+  })
+  const followingIds = follows.map(f => f.followingId)
+  
+  if (followingIds.length === 0) return []
+  
+  return prisma.activity.findMany({
+    where: {
+      userId: { in: followingIds },
+      language: { visibility: "PUBLIC" }
+    },
+    include: {
+      language: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
   })
 }
 

@@ -85,7 +85,7 @@ export function DerivationPanel({
       if ('error' in result) {
         toast.error(result.error)
       } else {
-        toast.success(`Derived ${result.count} word${result.count !== 1 ? "s" : ""} into ${targetLanguageName}!`)
+        toast.success(`Derived ${result.data?.count} word${result.data?.count !== 1 ? "s" : ""} into ${targetLanguageName}!`)
         setSelectedIds(new Set())
         router.refresh()
         onClose()

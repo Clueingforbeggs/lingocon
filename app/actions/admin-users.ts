@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma"
 import { requireAdmin } from "@/lib/admin"
 import { revalidatePath } from "next/cache"
 import { logAdminAction } from "@/app/actions/admin-audit"
+import { ActionResult } from "@/lib/types/action-result"
+import { User } from "@prisma/client"
 
 /**
  * Suspend or unsuspend a user
@@ -12,7 +14,7 @@ export async function toggleUserSuspension(
     userId: string,
     suspend: boolean,
     reason?: string
-) {
+): Promise<ActionResult<User>> {
     await requireAdmin()
 
     const user = await prisma.user.update({
@@ -34,13 +36,13 @@ export async function toggleUserSuspension(
     revalidatePath(`/admin/users`)
     revalidatePath(`/admin/users/${userId}`)
 
-    return { success: true, user }
+    return { success: true, data: user }
 }
 
 /**
  * Update admin notes for a user
  */
-export async function updateAdminNotes(userId: string, notes: string) {
+export async function updateAdminNotes(userId: string, notes: string): Promise<ActionResult<User>> {
     await requireAdmin()
 
     const user = await prisma.user.update({
@@ -57,13 +59,13 @@ export async function updateAdminNotes(userId: string, notes: string) {
 
     revalidatePath(`/admin/users/${userId}`)
 
-    return { success: true, user }
+    return { success: true, data: user }
 }
 
 /**
  * Toggle user's admin status
  */
-export async function toggleUserAdmin(userId: string, isAdmin: boolean) {
+export async function toggleUserAdmin(userId: string, isAdmin: boolean): Promise<ActionResult<User>> {
     await requireAdmin()
 
     const user = await prisma.user.update({
@@ -81,5 +83,5 @@ export async function toggleUserAdmin(userId: string, isAdmin: boolean) {
 
     revalidatePath(`/admin/users/${userId}`)
 
-    return { success: true, user }
+    return { success: true, data: user }
 }

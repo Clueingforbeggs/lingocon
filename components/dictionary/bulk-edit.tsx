@@ -59,7 +59,7 @@ export function BulkEdit({ entryIds, languageId, onClose }: BulkEditProps) {
       if ('error' in result) {
         toast.error(result.error)
       } else {
-        toast.success(`Updated ${result.updatedCount} entries`)
+        toast.success(`Updated ${result.data.updatedCount} entries`)
         onClose()
         router.refresh()
       }

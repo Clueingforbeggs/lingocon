@@ -37,15 +37,18 @@ function getGradientFromName(name: string): [string, string] {
 }
 
 interface BookCardProps {
-    language: Language & {
-        owner: Pick<UserType, "id" | "name" | "image">
+    language: {
+        id: string
+        name: string
+        slug: string
+        flagUrl?: string | null
+        owner: { name: string | null; image?: string | null }
         _count: {
-            scriptSymbols: number
-            grammarPages: number
+            scriptSymbols?: number
+            grammarPages?: number
             dictionaryEntries: number
             favorites?: number
         }
-        flagUrl?: string | null
     }
 }
 

@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
         languages: [],
         entries: [],
         grammarPages: [],
+        articles: [],
+        texts: [],
         error: "Search failed",
       },
       { status: 500 }

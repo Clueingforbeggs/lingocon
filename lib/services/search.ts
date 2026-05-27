@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 
-export type SearchScope = "all" | "languages" | "dictionary" | "grammar"
+export type SearchScope = "all" | "languages" | "dictionary" | "grammar" | "articles" | "texts"
 
 export interface SearchResult {
     languages: Array<{
@@ -29,14 +29,29 @@ export interface SearchResult {
         slug: string
         language: { id: string; name: string; slug: string; fontFamily: string | null }
     }>
+    articles: Array<{
+        id: string
+        title: string
+        slug: string
+        excerpt: string | null
+        language: { id: string; name: string; slug: string }
+    }>
+    texts: Array<{
+        id: string
+        title: string
+        slug: string
+        description: string | null
+        type: string
+        language: { id: string; name: string; slug: string }
+    }>
 }
 
 export async function search(query: string, scope: SearchScope = "all"): Promise<SearchResult> {
     if (!query || query.length < 2) {
-        return { languages: [], entries: [], grammarPages: [] }
+        return { languages: [], entries: [], grammarPages: [], articles: [], texts: [] }
     }
 
-    const [languages, entries, grammarPages] = await Promise.all([
+    const [languages, entries, grammarPages, articles, texts] = await Promise.all([
         // Search Languages
         (scope === "all" || scope === "languages")
             ? prisma.language.findMany({
@@ -118,11 +133,61 @@ export async function search(query: string, scope: SearchScope = "all"): Promise
                 take: scope === "grammar" ? 50 : 10,
             })
             : [],
+
+        // Search Articles
+        (scope === "all" || scope === "articles")
+            ? prisma.article.findMany({
+                where: {
+                    published: true,
+                    language: { visibility: "PUBLIC" },
+                    OR: [
+                        { title: { contains: query, mode: "insensitive" } },
+                        { excerpt: { contains: query, mode: "insensitive" } },
+                    ],
+                },
+                include: {
+                    language: {
+                        select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                        },
+                    },
+                },
+                take: scope === "articles" ? 50 : 5,
+            })
+            : [],
+
+        // Search Texts
+        (scope === "all" || scope === "texts")
+            ? prisma.text.findMany({
+                where: {
+                    published: true,
+                    language: { visibility: "PUBLIC" },
+                    OR: [
+                        { title: { contains: query, mode: "insensitive" } },
+                        { description: { contains: query, mode: "insensitive" } },
+                    ],
+                },
+                include: {
+                    language: {
+                        select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                        },
+                    },
+                },
+                take: scope === "texts" ? 50 : 5,
+            })
+            : [],
     ])
 
     return {
         languages,
         entries,
         grammarPages,
+        articles,
+        texts,
     }
 }

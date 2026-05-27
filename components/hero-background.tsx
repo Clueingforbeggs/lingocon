@@ -1,47 +1,82 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import { motion, useScroll, useTransform } from "motion/react"
+import { useEffect, useRef, useState, useMemo } from "react"
+import { motion, useScroll, useTransform, useReducedMotion } from "motion/react"
+
+// Carefully chosen Unicode characters from diverse writing systems
+const FLOATING_GLYPHS = [
+    "ᚱ", "愛", "ᚠ", "अ", "ع", "გ", "ы", "ש", "ⴀ",
+    "ꦏ", "ᜀ", "ᓀ", "Ω", "θ", "Ψ", "ᛟ"
+]
+
+interface FloatingGlyph {
+    id: number
+    char: string
+    x: number
+    size: number
+    duration: number
+    delay: number
+    opacity: number
+    rotation: number
+}
+
+function generateGlyphs(count: number): FloatingGlyph[] {
+    return Array.from({ length: count }, (_, i) => ({
+        id: i,
+        char: FLOATING_GLYPHS[i % FLOATING_GLYPHS.length],
+        x: 5 + Math.random() * 90,
+        size: 14 + Math.random() * 28,
+        duration: 12 + Math.random() * 18,
+        delay: Math.random() * -20,
+        opacity: 0.04 + Math.random() * 0.1,
+        rotation: -30 + Math.random() * 60,
+    }))
+}
 
 export function HeroBackground() {
-    const containerRef = useRef<HTMLDivElement>(null)
+    const prefersReducedMotion = useReducedMotion()
     const { scrollY } = useScroll()
-    const y = useTransform(scrollY, [0, 500], [0, 200])
-    const opacity = useTransform(scrollY, [0, 300], [1, 0])
+    const y = useTransform(scrollY, [0, 600], [0, 200])
+    const opacity = useTransform(scrollY, [0, 400], [1, 0])
+
+    const glyphs = useMemo(() => generateGlyphs(15), [])
 
     return (
-        <div ref={containerRef} className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-            {/* Base Grid */}
-            <div className="absolute inset-0 bg-background bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+            {/* Layer 1: Animated Mesh Gradient */}
+            <div className="hero-gradient-orb" />
+            <div className="hero-gradient-orb-2" />
 
-            {/* Radial fade for the grid */}
-            <div className="absolute inset-0 bg-background [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,transparent_70%,black)] [-webkit-mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,transparent_70%,black)]"></div>
+            {/* Layer 2: Subtle Grid */}
+            <div className="absolute inset-0 bg-background bg-[linear-gradient(to_right,hsl(var(--foreground)/0.03)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--foreground)/0.03)_1px,transparent_1px)] bg-[size:48px_48px]" />
 
-            {/* Subtle "Syntax Tree" Lines */}
-            <motion.div
-                style={{ y, opacity }}
-                className="absolute inset-0 max-w-6xl mx-auto opacity-20 dark:opacity-10"
-            >
-                <svg className="w-full h-full" viewBox="0 0 1000 800" xmlns="http://www.w3.org/2000/svg">
-                    {/* Main vertical trunk lines */}
-                    <path d="M500 0 V800" stroke="currentColor" strokeWidth="1" className="text-foreground" strokeDasharray="4 4" />
-                    <path d="M250 100 V800" stroke="currentColor" strokeWidth="1" className="text-foreground" strokeDasharray="4 4" />
-                    <path d="M750 100 V800" stroke="currentColor" strokeWidth="1" className="text-foreground" strokeDasharray="4 4" />
+            {/* Radial fade for the grid edges */}
+            <div className="absolute inset-0 bg-background [mask-image:radial-gradient(ellipse_70%_50%_at_50%_50%,transparent_30%,black)] [-webkit-mask-image:radial-gradient(ellipse_70%_50%_at_50%_50%,transparent_30%,black)]" />
 
-                    {/* Connecting branches */}
-                    <path d="M500 100 C 500 100 250 100 250 150" stroke="currentColor" strokeWidth="1" fill="none" className="text-foreground" />
-                    <path d="M500 100 C 500 100 750 100 750 150" stroke="currentColor" strokeWidth="1" fill="none" className="text-foreground" />
+            {/* Layer 3: Floating Glyphs */}
+            {!prefersReducedMotion && (
+                <motion.div style={{ y, opacity }} className="absolute inset-0">
+                    {glyphs.map((glyph) => (
+                        <div
+                            key={glyph.id}
+                            className="floating-glyph"
+                            style={{
+                                left: `${glyph.x}%`,
+                                fontSize: `${glyph.size}px`,
+                                animationDuration: `${glyph.duration}s`,
+                                animationDelay: `${glyph.delay}s`,
+                                opacity: glyph.opacity,
+                                transform: `rotate(${glyph.rotation}deg)`,
+                            }}
+                        >
+                            {glyph.char}
+                        </div>
+                    ))}
+                </motion.div>
+            )}
 
-                    <path d="M250 250 C 250 250 125 250 125 300" stroke="currentColor" strokeWidth="1" fill="none" className="text-foreground" />
-                    <path d="M250 250 C 250 250 375 250 375 300" stroke="currentColor" strokeWidth="1" fill="none" className="text-foreground" />
-
-                    {/* Decorative nodes */}
-                    <circle cx="500" cy="100" r="3" fill="currentColor" className="text-primary" />
-                    <circle cx="250" cy="150" r="3" fill="currentColor" className="text-primary" />
-                    <circle cx="750" cy="150" r="3" fill="currentColor" className="text-primary" />
-                    <circle cx="250" cy="250" r="3" fill="currentColor" className="text-primary" />
-                </svg>
-            </motion.div>
+            {/* Layer 4: Top radial highlight */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.06),transparent_70%)]" />
         </div>
     )
 }

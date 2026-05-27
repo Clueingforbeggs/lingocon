@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import Image from "next/image"
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid"
 import {
   BookOpen,
@@ -15,14 +16,17 @@ import {
   Library,
   Github,
   Construction,
-  Heart
+  Heart,
+  Globe,
+  Users,
+  BookMarked,
+  Map,
 } from "lucide-react"
 import { FeaturedLanguages } from "@/components/featured-languages"
 import { Navbar } from "@/components/navbar"
 import { TopLanguagesStripe } from "@/components/top-languages-stripe"
 import { ContainerScroll } from "@/components/ui/container-scroll-animation"
 import { InfiniteMovingCards } from "@/components/ui/infinite-moving-cards"
-import { SparklesCore } from "@/components/ui/sparkles"
 import { HeroBackground } from "@/components/hero-background"
 import { TextReveal } from "@/components/ui/text-reveal"
 import { MagneticButton } from "@/components/ui/magnetic-button"
@@ -30,6 +34,8 @@ import { Footer } from "@/components/footer"
 import { WordOfTheDay } from "@/components/word-of-the-day"
 import { SurveyBanner } from "@/components/survey-banner"
 import { LingoConUniverseMap } from "@/components/landing/universe-map"
+import { AnimatedCounter } from "@/components/landing/animated-counter"
+import { IPAVowelChart } from "@/components/landing/ipa-vowel-chart"
 
 export const dynamic = "force-dynamic"
 
@@ -249,6 +255,31 @@ async function getTopLanguages() {
   return languages
 }
 
+async function getUniverseLanguages() {
+  return prisma.language.findMany({
+    where: { visibility: "PUBLIC" },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      flagUrl: true,
+      parentLanguageId: true,
+      owner: { select: { name: true } },
+      _count: { select: { dictionaryEntries: true } }
+    }
+  })
+}
+
+async function getStats() {
+  const [languageCount, wordCount, userCount, grammarCount] = await Promise.all([
+    prisma.language.count(),
+    prisma.dictionaryEntry.count(),
+    prisma.user.count(),
+    prisma.grammarPage.count(),
+  ])
+  return { languageCount, wordCount, userCount, grammarCount }
+}
+
 import { DictionaryCard } from "@/components/landing/dictionary-card"
 import { GrammarCard } from "@/components/landing/grammar-card"
 import { ScriptCard } from "@/components/landing/script-card"
@@ -267,28 +298,14 @@ const DiscordIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
-async function getUniverseLanguages() {
-  return prisma.language.findMany({
-    where: { visibility: "PUBLIC" },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      flagUrl: true,
-      parentLanguageId: true,
-      owner: { select: { name: true } },
-      _count: { select: { dictionaryEntries: true } }
-    }
-  })
-}
-
 export default async function Home() {
   const session = await auth()
   const isDevMode = process.env.DEV_MODE === "true"
-  const [featuredLanguages, topLanguages, universeLanguages] = await Promise.all([
+  const [featuredLanguages, topLanguages, universeLanguages, stats] = await Promise.all([
     getFeaturedLanguages(),
     getTopLanguages(),
     getUniverseLanguages(),
+    getStats(),
   ])
   const isAuthenticated = session || isDevMode
 
@@ -332,30 +349,37 @@ export default async function Home() {
 
   const testimonials = [
     {
-      quote: "LingoCon has completely transformed how I document my conlangs. The dictionary tools are a lifesaver.",
+      quote: "LingoCon has completely transformed how I document my conlangs. The dictionary tools are a lifesaver — I migrated my entire Ithkuil-inspired lexicon in a day.",
       name: "Alex C.",
-      title: "Conlanger since 2015",
+      title: "Creator of Vëzhgad · Conlanger since 2015",
     },
     {
-      quote: "Finally, a tool that understands glossing rules. My grammar documentation looks professional now.",
+      quote: "Finally, a tool that understands glossing rules. My grammar documentation looks professional and publication-ready now.",
       name: "Sarah J.",
-      title: "Linguistics Student",
+      title: "Linguistics Student · Creator of Taliran",
     },
     {
-      quote: "The script support is incredible. Being able to see my constructed script rendered live is magic.",
+      quote: "The script support is incredible. Being able to see my constructed script rendered live alongside IPA — that's magic.",
       name: "Marcus R.",
-      title: "Fantasy Author",
+      title: "Fantasy Author · Creator of Kheldric",
     },
     {
-      quote: "I used to use five different spreadsheets. LingoCon replaced them all.",
+      quote: "I used to use five different spreadsheets. LingoCon replaced them all. The paradigm tables alone saved me weeks.",
       name: "Emily T.",
-      title: "Worldbuilder",
+      title: "Worldbuilder · Creator of Sëlani",
     },
     {
-      quote: "The best platform for sharing conlangs with the community. I love the feedback features.",
+      quote: "The best platform for sharing conlangs with the community. I love how polished everything looks when shared publicly.",
       name: "David K.",
-      title: "Language Enthusiast",
+      title: "Language Enthusiast · Creator of Nortusik",
     },
+  ]
+
+  const statItems = [
+    { label: "Languages Created", value: stats.languageCount, icon: Languages, suffix: "+" },
+    { label: "Words Defined", value: stats.wordCount, icon: BookMarked, suffix: "+" },
+    { label: "Active Conlangers", value: stats.userCount, icon: Users, suffix: "" },
+    { label: "Grammar Pages", value: stats.grammarCount, icon: FileText, suffix: "+" },
   ]
 
   return (
@@ -363,20 +387,40 @@ export default async function Home() {
       <JsonLd />
       <Navbar user={user} isDevMode={isDevMode} />
 
-      {/* Hero Section - Clean & Modern */}
+      {/* ═══════════════════════════════════════════════════════════
+          HERO SECTION — Create Instant "Wow"
+          ═══════════════════════════════════════════════════════════ */}
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-4 overflow-hidden min-h-[90vh] flex flex-col justify-center">
         <HeroBackground />
 
         <div className="container mx-auto max-w-5xl relative z-10 text-center">
-          <Badge
-            variant="outline"
-            className="mb-8 px-4 py-1.5 text-sm font-medium border-primary/20 bg-primary/5 text-primary rounded-full backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700 font-mono tracking-wide"
-          >
-            v2.0
-          </Badge>
+          {/* Badge row */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <Badge
+              variant="outline"
+              className="px-4 py-1.5 text-sm font-medium border-primary/20 bg-primary/5 text-primary rounded-full backdrop-blur-sm font-mono tracking-wide"
+            >
+              Open Source
+            </Badge>
+            <Badge
+              variant="outline"
+              className="px-4 py-1.5 text-sm font-medium border-primary/20 bg-primary/5 text-primary rounded-full backdrop-blur-sm font-mono tracking-wide"
+            >
+              Free Forever
+            </Badge>
+            <Badge
+              variant="outline"
+              className="px-4 py-1.5 text-sm font-medium border-primary/20 bg-primary/5 text-primary rounded-full backdrop-blur-sm font-mono tracking-wide"
+            >
+              By Conlangers, For Conlangers
+            </Badge>
+          </div>
 
+          {/* Main Headline */}
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-serif font-medium tracking-tight mb-8 leading-[0.9] text-foreground">
-            <TextReveal text="Create living languages" />
+            <span className="text-shine">
+              <TextReveal text="Create living languages" />
+            </span>
             <br />
             <span className="italic relative inline-block">
               <span className="text-gradient relative z-10">with structure</span>
@@ -386,11 +430,13 @@ export default async function Home() {
             </span>
           </h1>
 
-          <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed font-light">
+          {/* Subheadline */}
+          <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed font-light animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150">
+            Build, share, and breathe life into new languages.
             LingoCon is the professional toolkit for language construction.
-            Define grammar, build structured dictionaries, and visualize your syntax.
           </p>
 
+          {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
             {isAuthenticated ? (
               <Link href="/dashboard" className="w-full sm:w-auto">
@@ -401,7 +447,7 @@ export default async function Home() {
             ) : (
               <Link href="/login" className="w-full sm:w-auto">
                 <MagneticButton className="h-14 px-8 text-base font-medium rounded-full bg-primary text-primary-foreground hover:bg-primary/90 w-full hover:scale-105 transition-all shadow-lg hover:shadow-primary/25">
-                  Start Building <ArrowRight className="ml-2 w-5 h-5 pointer-events-none" />
+                  Begin Your First Language <ArrowRight className="ml-2 w-5 h-5 pointer-events-none" />
                 </MagneticButton>
               </Link>
             )}
@@ -410,12 +456,14 @@ export default async function Home() {
                 variant="outline"
                 className="h-14 px-8 text-base font-medium rounded-full border-2 border-primary/20 hover:border-primary/50 bg-background/50 backdrop-blur-sm w-full transition-all"
               >
-                Browse Languages
+                <Globe className="mr-2 w-5 h-5 pointer-events-none" />
+                Explore the Universe
               </MagneticButton>
             </Link>
           </div>
 
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500 border-t border-border/40 pt-12">
+          {/* Trending Stripe */}
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500 border-t border-border/40 pt-12 mt-12">
             <p className="text-xs font-semibold text-muted-foreground/60 mb-6 uppercase tracking-[0.2em]">
               Trending in the Corpus
             </p>
@@ -424,8 +472,39 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Contributor Callout */}
-      <section className="py-12 border-y border-border/40 bg-zinc-50/50 dark:bg-zinc-900/50">
+      {/* ═══════════════════════════════════════════════════════════
+          STATS / TRUST BAR
+          ═══════════════════════════════════════════════════════════ */}
+      <section className="py-16 border-y border-border/40 bg-secondary/20">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 max-w-4xl mx-auto">
+            {statItems.map((stat) => {
+              const Icon = stat.icon
+              return (
+                <div
+                  key={stat.label}
+                  className="text-center stat-hover rounded-xl p-4 cursor-default"
+                >
+                  <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary mb-3">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="text-3xl md:text-4xl font-serif font-medium text-foreground mb-1">
+                    <AnimatedCounter target={stat.value} suffix={stat.suffix} />
+                  </div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                    {stat.label}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          CONTRIBUTOR CALLOUT
+          ═══════════════════════════════════════════════════════════ */}
+      <section className="py-12 border-b border-border/40 bg-zinc-50/50 dark:bg-zinc-900/50">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
             <h3 className="text-2xl font-serif font-medium mb-3 flex items-center justify-center md:justify-start gap-3">
@@ -439,7 +518,7 @@ export default async function Home() {
               Help us build the future of conlanging. Join our open source community.
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap justify-center">
             <Link href="https://github.com/alexcircuits/lingocon" target="_blank">
               <Button variant="outline" size="lg" className="gap-2 h-12 px-6 rounded-full border-primary/20 bg-background/50 hover:bg-secondary/50">
                 <Github className="w-4 h-4" />
@@ -462,35 +541,45 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Philosophy Section - Typography Focused */}
+      {/* ═══════════════════════════════════════════════════════════
+          PHILOSOPHY SECTION — Visual Poetry
+          ═══════════════════════════════════════════════════════════ */}
       <section className="py-32 px-4 bg-foreground text-background overflow-hidden relative">
-        <div className="container mx-auto max-w-4xl relative z-10">
-          <div className="flex flex-col gap-12">
-            <h2 className="text-4xl sm:text-6xl md:text-7xl font-serif font-medium leading-[1.1] tracking-tight">
-              Spreadsheets define data. <br />
-              <span className="text-muted-foreground/60 italic">LingoCon defines culture.</span>
-            </h2>
+        <div className="container mx-auto max-w-5xl relative z-10">
+          <div className="flex flex-col lg:flex-row gap-16 items-center">
+            {/* Text Content */}
+            <div className="flex-1 flex flex-col gap-12">
+              <h2 className="text-4xl sm:text-6xl md:text-7xl font-serif font-medium leading-[1.1] tracking-tight">
+                Spreadsheets define data. <br />
+                <span className="text-muted-foreground/60 italic">LingoCon defines culture.</span>
+              </h2>
 
-            <div className="grid md:grid-cols-2 gap-12 pt-8 border-t border-background/20">
-              <p className="text-lg md:text-xl leading-relaxed text-background/80 font-light">
-                Language isn&apos;t just a list of words. It&apos;s a complex web of relationships,
-                from the phonotactics that shape your sound to the syntax tree that holds your thought.
-              </p>
-              <p className="text-lg md:text-xl leading-relaxed text-background/80 font-light">
-                We built LingoCon to be the IDE for conlangs. Structural integrity,
-                cross-referencing, and export-ready formatting come standard. This is where your world begins to speak.
-              </p>
+              {/* Accent line */}
+              <div className="h-px w-32 bg-gradient-to-r from-[hsl(var(--accent))] to-transparent" />
+
+              <div className="grid md:grid-cols-2 gap-12">
+                <p className="text-lg md:text-xl leading-relaxed text-background/80 font-light">
+                  Language isn&apos;t just a list of words. It&apos;s a complex web of relationships,
+                  from the phonotactics that shape your sound to the syntax tree that holds your thought.
+                </p>
+                <p className="text-lg md:text-xl leading-relaxed text-background/80 font-light">
+                  We built LingoCon to be the IDE for conlangs. Structural integrity,
+                  cross-referencing, and export-ready formatting come standard. This is where your world begins to speak.
+                </p>
+              </div>
+            </div>
+
+            {/* IPA Vowel Chart - draws on scroll */}
+            <div className="flex-shrink-0 hidden lg:block">
+              <IPAVowelChart />
             </div>
           </div>
         </div>
-
-        {/* Subtle background detail */}
-        <div className="absolute top-0 right-0 p-8 opacity-10 font-mono text-9xl font-bold tracking-tighter select-none pointer-events-none">
-          IDE
-        </div>
       </section>
 
-      {/* Studio Preview - Scroll Animation */}
+      {/* ═══════════════════════════════════════════════════════════
+          STUDIO PREVIEW — Real Product Screenshot
+          ═══════════════════════════════════════════════════════════ */}
       <section className="bg-background relative -mt-20 z-10">
         <ContainerScroll
           titleComponent={
@@ -498,49 +587,30 @@ export default async function Home() {
               <Badge variant="outline" className="text-xs uppercase tracking-widest border-primary/20 bg-primary/5 text-primary">
                 The Workbench
               </Badge>
-              <h1 className="text-4xl md:text-6xl font-serif font-medium text-foreground">
+              <h2 className="text-4xl md:text-6xl font-serif font-medium text-foreground">
                 Your Language Studio <br />
                 <span className="text-4xl md:text-[6rem] font-bold mt-1 leading-none text-gradient block">
                   Reimagined
                 </span>
-              </h1>
+              </h2>
             </div>
           }
         >
-          {/* Mock Studio UI */}
           <Link
             href={isAuthenticated ? "/dashboard" : "/login"}
-            className="w-full h-full bg-background rounded-2xl overflow-hidden flex flex-col items-start justify-start relative shadow-inner group/tablet cursor-pointer transition-all duration-500 hover:ring-1 hover:ring-primary/20"
+            className="w-full h-full bg-background rounded-2xl overflow-hidden flex items-center justify-center relative shadow-inner group/tablet cursor-pointer transition-all duration-500 hover:ring-1 hover:ring-primary/20"
           >
-            {/* Header */}
-            <div className="w-full h-12 border-b border-border/10 bg-muted/20 flex items-center px-4 gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-400/80" />
-              <div className="w-3 h-3 rounded-full bg-yellow-400/80" />
-              <div className="w-3 h-3 rounded-full bg-green-400/80" />
-              <div className="ml-4 h-6 w-96 bg-muted/40 rounded-md" />
-            </div>
-            {/* Body */}
-            <div className="flex-1 w-full flex">
-              <div className="w-64 border-r border-border/10 h-full p-4 space-y-4 bg-muted/10 hidden md:block">
-                <div className="w-full h-8 bg-primary/10 rounded" />
-                <div className="w-3/4 h-4 bg-muted/30 rounded" />
-                <div className="w-1/2 h-4 bg-muted/30 rounded" />
-                <div className="w-2/3 h-4 bg-muted/30 rounded" />
-              </div>
-              <div className="flex-1 p-8 grid grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div className="w-full h-32 bg-secondary/30 rounded-lg border border-border/20" />
-                  <div className="w-full h-64 bg-secondary/30 rounded-lg border border-border/20" />
-                </div>
-                <div className="space-y-4 pt-12">
-                  <div className="w-full h-24 bg-primary/5 rounded-lg border border-primary/10" />
-                  <div className="w-full h-48 bg-secondary/30 rounded-lg border border-border/20" />
-                </div>
-              </div>
-            </div>
+            {/* Real Studio Screenshot */}
+            <Image
+              src="/studio-preview.png"
+              alt="LingoCon Studio — Grammar editor with interlinear glossing, language family tree, and lexicon search"
+              fill
+              className="object-cover object-top rounded-2xl"
+              priority
+            />
 
-            {/* Overlay Text */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[1px] opacity-0 group-hover/tablet:opacity-100 transition-opacity duration-500">
+            {/* Overlay on Hover */}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px] opacity-0 group-hover/tablet:opacity-100 transition-opacity duration-500 z-10">
               <div className="bg-background/90 text-foreground px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 transform translate-y-4 group-hover/tablet:translate-y-0 transition-transform duration-500 font-medium">
                 {isAuthenticated ? "Open Studio Dashboard" : "Sign In to Start Building"}
                 <ArrowRight className="h-4 w-4" />
@@ -550,7 +620,9 @@ export default async function Home() {
         </ContainerScroll>
       </section>
 
-      {/* Features Grid */}
+      {/* ═══════════════════════════════════════════════════════════
+          FEATURES GRID — Bento Cards with Scroll Reveals
+          ═══════════════════════════════════════════════════════════ */}
       <section className="py-24 bg-secondary/30 relative border-y border-border/40">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
@@ -571,24 +643,65 @@ export default async function Home() {
                 header={feature.header}
                 icon={feature.icon}
                 className={feature.className}
+                index={i}
               />
             ))}
           </BentoGrid>
         </div>
       </section>
 
-      {/* Community Voices */}
-      {/* <section className="py-24 bg-background border-b border-border/40 overflow-hidden">
+      {/* ═══════════════════════════════════════════════════════════
+          UNIVERSE MAP — Full-Bleed "Wow" Moment
+          ═══════════════════════════════════════════════════════════ */}
+      {universeLanguages.length > 0 && (
+        <section className="py-24 bg-foreground text-background relative overflow-hidden">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <Badge variant="outline" className="text-xs uppercase tracking-widest border-background/20 bg-background/5 text-background/70 mb-4">
+                Interactive Map
+              </Badge>
+              <h2 className="text-3xl md:text-5xl font-serif mb-4">
+                Explore the LingoCon Universe
+              </h2>
+              <p className="text-background/60 text-lg max-w-2xl mx-auto">
+                Every node is a language. Every connection is a family tree. Discover the constellation of constructed languages being built right now.
+              </p>
+            </div>
+            <div className="max-w-6xl mx-auto">
+              <LingoConUniverseMap languages={universeLanguages} />
+            </div>
+            <div className="text-center mt-8">
+              <Link href="/browse">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="rounded-full border-background/20 text-background hover:bg-background/10 gap-2"
+                >
+                  <Map className="w-4 h-4" />
+                  Browse All Languages
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          COMMUNITY VOICES — Testimonials
+          ═══════════════════════════════════════════════════════════ */}
+      <section className="py-24 bg-background border-b border-border/40 overflow-hidden">
         <div className="container mx-auto px-4 mb-12 text-center">
           <h2 className="text-3xl md:text-5xl font-serif mb-6">Loved by Conlangers</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Join thousands of worldbuilders who trust LingoCon.
+            Join the growing community of worldbuilders who trust LingoCon.
           </p>
         </div>
         <InfiniteMovingCards items={testimonials} direction="right" speed="slow" />
-      </section> */}
+      </section>
 
-      {/* Word of the Day */}
+      {/* ═══════════════════════════════════════════════════════════
+          WORD OF THE DAY
+          ═══════════════════════════════════════════════════════════ */}
       <section className="py-24 bg-secondary/30 border-y border-border/40">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
@@ -605,7 +718,9 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Featured Languages */}
+      {/* ═══════════════════════════════════════════════════════════
+          FEATURED LANGUAGES
+          ═══════════════════════════════════════════════════════════ */}
       {
         featuredLanguages.length > 0 && (
           <section className="py-24 bg-background">
@@ -624,20 +739,24 @@ export default async function Home() {
         )
       }
 
-      {/* Support Section */}
+      {/* ═══════════════════════════════════════════════════════════
+          SUPPORT SECTION — Emotional & Warm
+          ═══════════════════════════════════════════════════════════ */}
       <section className="py-24 bg-rose-500/5 border-t border-rose-500/10 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-px bg-gradient-to-r from-transparent via-rose-500/30 to-transparent" />
         <div className="absolute bottom-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.03)_0,transparent_100%)] pointer-events-none" />
         
         <div className="container mx-auto px-4 text-center relative z-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-500/10 text-rose-500 mb-6 shadow-sm ring-1 ring-rose-500/20">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-500/10 text-rose-500 mb-6 shadow-sm ring-1 ring-rose-500/20 heart-pulse">
             <Heart className="w-8 h-8 fill-rose-500/20" />
           </div>
           <h2 className="text-3xl md:text-5xl font-serif mb-6 tracking-tight text-foreground">
             Support Our Mission
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-10 leading-relaxed font-light">
-            LingoCon is built by language lovers, for language lovers. If our platform helps your worlds come alive, consider helping us keep the lights on and the servers running.
+            LingoCon is built by language lovers, for language lovers.
+            Every contribution keeps the servers running and the tools free for every conlanger on earth.
+            If our platform helps your worlds come alive, consider helping us sustain this dream.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/donate">

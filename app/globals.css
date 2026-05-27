@@ -136,7 +136,7 @@
   h1,
   h2,
   h3 {
-    font-family: 'Instrument Serif', Georgia, serif;
+    font-family: var(--font-instrument-serif), Georgia, serif;
     font-weight: 400;
     letter-spacing: -0.02em;
   }
@@ -145,7 +145,7 @@
   code,
   kbd,
   .font-mono {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-family: var(--font-jetbrains-mono), 'Fira Code', monospace;
   }
 }
 
@@ -278,7 +278,180 @@
   }
 }
 
+/* ===== Hero Animated Gradient Orbs ===== */
+.hero-gradient-orb {
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    hsl(var(--primary) / 0.08) 0%,
+    hsl(var(--accent) / 0.04) 40%,
+    transparent 70%
+  );
+  animation: gradient-drift 20s ease-in-out infinite alternate;
+  filter: blur(60px);
+  pointer-events: none;
+}
 
+.hero-gradient-orb-2 {
+  position: absolute;
+  bottom: -20%;
+  right: -10%;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    hsl(270 50% 50% / 0.06) 0%,
+    hsl(var(--primary) / 0.03) 40%,
+    transparent 70%
+  );
+  animation: gradient-drift-2 25s ease-in-out infinite alternate;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+@keyframes gradient-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(5%, 8%) scale(1.1); }
+  100% { transform: translate(-3%, 4%) scale(0.95); }
+}
+
+@keyframes gradient-drift-2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-8%, -5%) scale(1.15); }
+  100% { transform: translate(4%, -3%) scale(0.9); }
+}
+
+/* ===== Floating Glyphs ===== */
+.floating-glyph {
+  position: absolute;
+  bottom: -10%;
+  font-family: var(--font-instrument-serif), Georgia, serif;
+  color: hsl(var(--foreground));
+  animation: float-up linear infinite;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform;
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0) rotate(var(--rotation, 0deg));
+    opacity: 0;
+  }
+  5% {
+    opacity: var(--glyph-opacity, 0.07);
+  }
+  85% {
+    opacity: var(--glyph-opacity, 0.07);
+  }
+  100% {
+    transform: translateY(-110vh) rotate(calc(var(--rotation, 0deg) + 30deg));
+    opacity: 0;
+  }
+}
+
+/* ===== Text Shine Effect ===== */
+.text-shine {
+  background: linear-gradient(
+    120deg,
+    hsl(var(--foreground)) 0%,
+    hsl(var(--foreground)) 40%,
+    hsl(var(--primary)) 50%,
+    hsl(var(--foreground)) 60%,
+    hsl(var(--foreground)) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: text-shine-move 8s ease-in-out infinite;
+}
+
+@keyframes text-shine-move {
+  0%, 100% { background-position: 200% center; }
+  50% { background-position: 0% center; }
+}
+
+/* ===== Pulsing Heart ===== */
+.heart-pulse {
+  animation: heart-beat 2s ease-in-out infinite;
+}
+
+@keyframes heart-beat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.15); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.1); }
+}
+
+/* ===== Stat Card Hover ===== */
+.stat-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px hsl(var(--primary) / 0.08);
+}
+
+/* ===== IPA Chart Drawing Animation ===== */
+.ipa-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+}
+
+.ipa-draw.animate {
+  animation: draw-line 3s ease-out forwards;
+}
+
+@keyframes draw-line {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ===== Section Accent Line ===== */
+.accent-line-grow {
+  width: 0;
+  transition: width 1.5s ease-out;
+}
+
+.accent-line-grow.visible {
+  width: 120px;
+}
+
+/* ===== Reduced Motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  .hero-gradient-orb,
+  .hero-gradient-orb-2 {
+    animation: none;
+  }
+
+  .floating-glyph {
+    animation: none;
+    display: none;
+  }
+
+  .text-shine {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+
+  .heart-pulse {
+    animation: none;
+  }
+
+  .animate-scroll {
+    animation: none;
+  }
+}
 
 @layer components {
 

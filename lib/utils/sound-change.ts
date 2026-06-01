@@ -50,11 +50,11 @@ const DEFAULT_CONSONANTS = new Set([
   // Trills
   "ʙ", "r", "ʀ", "ʜ", "ʢ",
   // Taps/Flaps
-  "ⱱ", "ɾ", "ɽ",
+  "ⱱ", "ɾ", "ɽ", "ɺ",
   // Fricatives
   "ɸ", "β", "f", "v", "θ", "ð", "s", "z", "ʃ", "ʒ", "ʂ", "ʐ",
   "ç", "ʝ", "x", "ɣ", "χ", "ʁ", "ħ", "ʕ", "h", "ɦ",
-  "ɕ", "ʑ", "ʍ", "ɧ",
+  "ɕ", "ʑ", "ʍ", "ɧ", "ɼ",
   // Lateral fricatives
   "ɬ", "ɮ",
   // Affricates
@@ -62,7 +62,7 @@ const DEFAULT_CONSONANTS = new Set([
   // Approximants
   "ʋ", "ɹ", "ɻ", "j", "ɰ", "w", "ɥ",
   // Lateral approximants
-  "l", "ɭ", "ʎ", "ʟ",
+  "l", "ɫ", "ɭ", "ʎ", "ʟ",
   // Implosives
   "ɓ", "ɗ", "ʄ", "ɠ", "ʛ",
 ])

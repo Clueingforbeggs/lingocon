@@ -27,6 +27,7 @@ const IPA_CONSONANTS = [
     { symbol: "ɟ", name: "voiced palatal plosive" },
     { symbol: "k", name: "voiceless velar plosive" },
     { symbol: "g", name: "voiced velar plosive" },
+    { symbol: "ɡ", name: "voiced velar plosive (script g)" },
     { symbol: "q", name: "voiceless uvular plosive" },
     { symbol: "ɢ", name: "voiced uvular plosive" },
     { symbol: "ʔ", name: "glottal stop" },
@@ -46,6 +47,7 @@ const IPA_CONSONANTS = [
     { symbol: "ⱱ", name: "labiodental flap" },
     { symbol: "ɾ", name: "alveolar tap" },
     { symbol: "ɽ", name: "retroflex flap" },
+    { symbol: "ɺ", name: "alveolar lateral flap" },
     // Fricatives
     { symbol: "ɸ", name: "voiceless bilabial fricative" },
     { symbol: "β", name: "voiced bilabial fricative" },
@@ -80,6 +82,7 @@ const IPA_CONSONANTS = [
     { symbol: "ɰ", name: "velar approximant" },
     // Lateral approximants
     { symbol: "l", name: "alveolar lateral approximant" },
+    { symbol: "ɫ", name: "velarized alveolar lateral approximant" },
     { symbol: "ɭ", name: "retroflex lateral approximant" },
     { symbol: "ʎ", name: "palatal lateral approximant" },
     { symbol: "ʟ", name: "velar lateral approximant" },
@@ -94,6 +97,7 @@ const IPA_CONSONANTS = [
     { symbol: "ɕ", name: "voiceless alveolo-palatal fricative" },
     { symbol: "ʑ", name: "voiced alveolo-palatal fricative" },
     { symbol: "ɧ", name: "voiceless sj-sound" },
+    { symbol: "ɼ", name: "bidental fricative" },
     // Affricates
     { symbol: "t͡s", name: "voiceless alveolar affricate" },
     { symbol: "d͡z", name: "voiced alveolar affricate" },
@@ -130,6 +134,10 @@ const IPA_VOWELS = [
     { symbol: "o", name: "close-mid back rounded vowel" },
     // Mid vowels
     { symbol: "ə", name: "mid central vowel (schwa)" },
+    { symbol: "e̞", name: "mid front unrounded vowel" },
+    { symbol: "ø̞", name: "mid front rounded vowel" },
+    { symbol: "ɤ̞", name: "mid back unrounded vowel" },
+    { symbol: "o̞", name: "mid back rounded vowel" },
     // Open-mid vowels
     { symbol: "ɛ", name: "open-mid front unrounded vowel" },
     { symbol: "œ", name: "open-mid front rounded vowel" },
@@ -180,6 +188,8 @@ const IPA_DIACRITICS = [
     { symbol: "̻", name: "laminal", combining: true },
     { symbol: "̃", name: "nasalized", combining: true },
     { symbol: "̼", name: "linguolabial", combining: true },
+    { symbol: "̴", name: "velarized or pharyngealized", combining: true },
+    { symbol: "ˁ", name: "epiglottalized/uvularized" },
     { symbol: "̹", name: "more rounded", combining: true },
     { symbol: "̜", name: "less rounded", combining: true },
     { symbol: "̝", name: "raised", combining: true },

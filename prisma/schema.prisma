@@ -55,6 +55,7 @@ model User {
   moduleInstalls ModuleInstall[]
   moduleReviews  ModuleReview[]
   moduleReports  ModuleReport[]
+  extensionTokens ExtensionToken[]
 
   @@map("users")
 }
@@ -846,4 +847,22 @@ model ModuleReport {
   @@index([reporterId])
   @@index([status])
   @@map("module_reports")
+}
+
+// Browser extension API tokens — one-time generated, stored as SHA-256 hash
+model ExtensionToken {
+  id          String    @id @default(cuid())
+  userId      String
+  tokenHash   String    @unique  // SHA-256(rawToken) — raw token is never stored
+  name        String?            // e.g. "Chrome on MacBook"
+  lastUsedAt  DateTime?
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("extension_tokens")
 }

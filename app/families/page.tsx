@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { Navbar } from "@/components/navbar"
-import { LingoConUniverseMap } from "@/components/landing/universe-map"
+import { FamiliesView } from "./families-view"
 
 export const dynamic = "force-dynamic"
 
@@ -72,9 +72,7 @@ export default async function PublicFamiliesPage() {
             </div>
           </div>
         ) : (
-          <div className="w-full h-full">
-            <LingoConUniverseMap languages={languages} />
-          </div>
+          <FamiliesView languages={languages} />
         )}
       </main>
     </div>

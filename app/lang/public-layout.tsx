@@ -72,7 +72,7 @@ export function PublicLayout({ language, children, user, isDevMode }: PublicLayo
       {/* Language Sub-Navigation */}
       <nav className="border-b border-border/40 bg-background sticky top-14 z-30">
         <div className="container mx-auto px-4">
-          <ul className="flex gap-0.5 overflow-x-auto scrollbar-hide -mb-px">
+          <ul className="flex gap-0.5 overflow-x-auto scrollbar-hide scroll-fade-x -mb-px">
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||

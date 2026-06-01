@@ -80,19 +80,26 @@ export function Globe({
         window.addEventListener("resize", onResize)
         onResize()
 
+        // On small/low-power devices, render at a lower resolution and sample
+        // count so the GPU canvas stays smooth and memory-light.
+        const isSmall = window.matchMedia("(max-width: 767px)").matches
+        const renderScale = isSmall ? 1 : 2
+
         // cobe needs WebGL; bail out gracefully if it's unavailable so a missing
         // GL context can never crash the whole page.
         let globe: ReturnType<typeof createGlobe> | null = null
         try {
             globe = createGlobe(canvasRef.current!, {
                 ...config,
-                width: widthRef.current * 2,
-                height: widthRef.current * 2,
+                devicePixelRatio: isSmall ? 1 : config.devicePixelRatio,
+                mapSamples: isSmall ? 8000 : config.mapSamples,
+                width: widthRef.current * renderScale,
+                height: widthRef.current * renderScale,
                 onRender: (state) => {
                     if (!pointerInteracting.current) phiRef.current += 0.005
                     state.phi = phiRef.current + rs.get()
-                    state.width = widthRef.current * 2
-                    state.height = widthRef.current * 2
+                    state.width = widthRef.current * renderScale
+                    state.height = widthRef.current * renderScale
                 },
             })
             setTimeout(() => {

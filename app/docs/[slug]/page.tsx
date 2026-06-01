@@ -46,7 +46,7 @@ export default async function DocSlugPage({ params }: PageProps) {
   return (
     <article className="rounded-xl border border-border/60 bg-card/50 px-4 py-8 shadow-sm sm:px-8 md:py-10">
       <div
-        className="prose prose-neutral max-w-none dark:prose-invert prose-headings:font-serif prose-a:text-primary prose-code:text-sm prose-pre:bg-muted/80"
+        className="prose prose-neutral max-w-none dark:prose-invert prose-headings:font-serif prose-a:text-primary prose-code:text-sm prose-pre:bg-muted/80 prose-pre:overflow-x-auto [&_table]:block [&_table]:w-max [&_table]:max-w-none [&_table]:overflow-x-auto"
       >
         <DocMarkdown content={markdown} />
       </div>

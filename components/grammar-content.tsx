@@ -91,7 +91,7 @@ export function GrammarContent({ content, className, languageSlug }: GrammarCont
   return (
     <div
       ref={containerRef}
-      className={`prose prose-slate dark:prose-invert max-w-none ${className || ""}`}
+      className={`prose prose-slate dark:prose-invert max-w-none [&_table]:block [&_table]:w-max [&_table]:max-w-none [&_table]:overflow-x-auto ${className || ""}`}
     >
       <EditorContent editor={editor} />
     </div>

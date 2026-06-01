@@ -77,7 +77,7 @@ export function ResultCard({ result, query }: ResultCardProps) {
         const url = `/lang/${result.slug}`
         return (
             <div className="group max-w-[600px] mb-6">
-                <div className="flex items-center gap-1.5 text-sm mb-0.5">
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm mb-0.5 min-w-0">
                     {result.flagUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={result.flagUrl} alt="" className="h-5 w-5 rounded-full object-cover" />
@@ -88,7 +88,7 @@ export function ResultCard({ result, query }: ResultCardProps) {
                     <span className="text-sm text-foreground/50">›</span>
                     <span className="text-sm text-foreground/70">lang</span>
                     <span className="text-sm text-foreground/50">›</span>
-                    <span className="text-sm text-foreground/70">{result.slug}</span>
+                    <span className="text-sm text-foreground/70 break-all">{result.slug}</span>
                 </div>
                 <Link href={url} className="block">
                     <h3 className="text-xl leading-snug text-primary hover:underline cursor-pointer">
@@ -114,10 +114,10 @@ export function ResultCard({ result, query }: ResultCardProps) {
         const url = `/lang/${result.language.slug}/dictionary?q=${encodeURIComponent(result.lemma)}`
         return (
             <div className="group max-w-[600px] mb-6">
-                <div className="flex items-center gap-1.5 text-sm mb-0.5">
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm mb-0.5 min-w-0">
                     <span className="text-sm text-foreground/70">lingocon.com</span>
                     <span className="text-sm text-foreground/50">›</span>
-                    <span className="text-sm text-foreground/70">{result.language.slug}</span>
+                    <span className="text-sm text-foreground/70 break-all">{result.language.slug}</span>
                     <span className="text-sm text-foreground/50">›</span>
                     <span className="text-sm text-foreground/70">dictionary</span>
                 </div>
@@ -143,10 +143,10 @@ export function ResultCard({ result, query }: ResultCardProps) {
         const url = `/lang/${result.language.slug}/grammar/${result.slug}`
         return (
             <div className="group max-w-[600px] mb-6">
-                <div className="flex items-center gap-1.5 text-sm mb-0.5">
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm mb-0.5 min-w-0">
                     <span className="text-sm text-foreground/70">lingocon.com</span>
                     <span className="text-sm text-foreground/50">›</span>
-                    <span className="text-sm text-foreground/70">{result.language.slug}</span>
+                    <span className="text-sm text-foreground/70 break-all">{result.language.slug}</span>
                     <span className="text-sm text-foreground/50">›</span>
                     <span className="text-sm text-foreground/70">grammar</span>
                 </div>
@@ -166,10 +166,10 @@ export function ResultCard({ result, query }: ResultCardProps) {
         const url = `/lang/${result.language.slug}/articles/${result.slug}`
         return (
             <div className="group max-w-[600px] mb-6">
-                <div className="flex items-center gap-1.5 text-sm mb-0.5">
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm mb-0.5 min-w-0">
                     <span className="text-sm text-foreground/70">lingocon.com</span>
                     <span className="text-sm text-foreground/50">›</span>
-                    <span className="text-sm text-foreground/70">{result.language.slug}</span>
+                    <span className="text-sm text-foreground/70 break-all">{result.language.slug}</span>
                     <span className="text-sm text-foreground/50">›</span>
                     <span className="text-sm text-foreground/70">articles</span>
                 </div>
@@ -190,10 +190,10 @@ export function ResultCard({ result, query }: ResultCardProps) {
         const url = `/lang/${result.language.slug}/texts/${result.slug}`
         return (
             <div className="group max-w-[600px] mb-6">
-                <div className="flex items-center gap-1.5 text-sm mb-0.5">
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm mb-0.5 min-w-0">
                     <span className="text-sm text-foreground/70">lingocon.com</span>
                     <span className="text-sm text-foreground/50">›</span>
-                    <span className="text-sm text-foreground/70">{result.language.slug}</span>
+                    <span className="text-sm text-foreground/70 break-all">{result.language.slug}</span>
                     <span className="text-sm text-foreground/50">›</span>
                     <span className="text-sm text-foreground/70">texts</span>
                 </div>

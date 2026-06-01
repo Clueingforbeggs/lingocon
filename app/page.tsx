@@ -447,7 +447,7 @@ export default async function Home() {
             <div className="max-w-6xl mx-auto">
               <UniverseMapLazy languages={universeLanguages} />
             </div>
-            <div className="text-center mt-8">
+            <div className="text-center mt-8 hidden md:block">
               <Link href="/browse">
                 <Button
                   variant="outline"

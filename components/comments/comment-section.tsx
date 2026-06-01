@@ -140,7 +140,7 @@ export function CommentSection({
                 <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words">
                     {comment.content}
                 </p>
-                <div className="flex items-center gap-2 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-2 mt-1.5 hover-reveal">
                     {currentUserId && !isReply && (
                         <Button
                             variant="ghost"

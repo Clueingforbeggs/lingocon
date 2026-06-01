@@ -175,7 +175,7 @@ function ExportVisual() {
 
 export function FeatureBento() {
     return (
-        <div className="grid auto-rows-[minmax(20rem,auto)] grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:gap-5 md:auto-rows-[minmax(20rem,auto)] md:grid-cols-3">
             <Cell
                 className="md:col-span-2"
                 wide

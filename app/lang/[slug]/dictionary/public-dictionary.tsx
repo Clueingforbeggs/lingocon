@@ -137,29 +137,32 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 sm:gap-4 items-center flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={reversed ? "Search by English meaning..." : "Search by lemma, gloss, IPA, or part of speech..."}
+            placeholder={reversed ? "Search by English meaning..." : "Search by lemma, gloss, IPA..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
           />
         </div>
-        <Button
-          variant={reversed ? "default" : "outline"}
-          size="sm"
-          className="gap-2 shrink-0"
-          onClick={() => setReversed(!reversed)}
-        >
-          <ArrowLeftRight className="h-3.5 w-3.5" />
-          {reversed ? "English → Conlang" : "Conlang → English"}
-        </Button>
-        <TransliterationToggle
-          onToggle={setShowLatin}
-          defaultShowLatin={showLatin}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant={reversed ? "default" : "outline"}
+            size="sm"
+            className="flex-1 justify-center gap-2 sm:flex-none sm:shrink-0"
+            onClick={() => setReversed(!reversed)}
+          >
+            <ArrowLeftRight className="h-3.5 w-3.5" />
+            <span className="sm:hidden">{reversed ? "EN → Lang" : "Lang → EN"}</span>
+            <span className="hidden sm:inline">{reversed ? "English → Conlang" : "Conlang → English"}</span>
+          </Button>
+          <TransliterationToggle
+            onToggle={setShowLatin}
+            defaultShowLatin={showLatin}
+          />
+        </div>
       </div>
 
       {activeTag && (
@@ -193,8 +196,8 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
                 <TableRow>
                   <TableHead>Lemma</TableHead>
                   <TableHead>Gloss</TableHead>
-                  <TableHead>IPA</TableHead>
-                  <TableHead>Part of Speech</TableHead>
+                  <TableHead className="hidden sm:table-cell">IPA</TableHead>
+                  <TableHead className="hidden md:table-cell">Part of Speech</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -223,7 +226,7 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
                         )}
                       </TableCell>
                       <TableCell>{entry.gloss}</TableCell>
-                      <TableCell className="font-mono text-sm">
+                      <TableCell className="hidden font-mono text-sm sm:table-cell">
                         {entry.ipa || (entry as any).audioUrl ? (
                           <span className="flex items-center gap-2">
                             {entry.ipa && <span>/{entry.ipa}/</span>}
@@ -233,7 +236,7 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
                           "-"
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
                         {entry.partOfSpeech || "-"}
                       </TableCell>
                     </TableRow>

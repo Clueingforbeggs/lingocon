@@ -124,7 +124,7 @@ export default async function UserProfilePage({
           {/* Main Content Area */}
           <main className="mt-8 md:mt-12 min-w-0">
             <Tabs defaultValue="languages" className="space-y-6">
-              <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md py-4 -mx-4 px-4 md:-mx-0 md:px-0 md:static md:bg-transparent md:backdrop-blur-none md:p-0">
+              <div className="sticky top-14 z-30 bg-background/80 backdrop-blur-md py-4 -mx-4 px-4 md:-mx-0 md:px-0 md:static md:bg-transparent md:backdrop-blur-none md:p-0">
                 <TabsList className="bg-muted/40 p-1 w-full flex justify-start overflow-x-auto no-scrollbar md:w-auto md:inline-flex">
                   <TabsTrigger value="languages" className="flex-1 md:flex-none md:w-32">Languages</TabsTrigger>
                   <TabsTrigger value="badges" className="flex-1 md:flex-none md:gap-1.5 md:px-6">

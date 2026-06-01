@@ -110,13 +110,13 @@ export function LanguageHero({ language, isFavorite, userId }: LanguageHeroProps
                             >
                                 {language.visibility}
                             </Badge>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                                 {language.discordUrl && (
                                     <Link
                                         href={language.discordUrl}
                                         target="_blank"
                                         aria-label="Discord"
-                                        className="text-muted-foreground transition-colors hover:text-[#5865F2]"
+                                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/5 hover:text-[#5865F2]"
                                     >
                                         <MessageSquare className="h-4 w-4" />
                                     </Link>
@@ -126,7 +126,7 @@ export function LanguageHero({ language, isFavorite, userId }: LanguageHeroProps
                                         href={language.telegramUrl}
                                         target="_blank"
                                         aria-label="Telegram"
-                                        className="text-muted-foreground transition-colors hover:text-[#0088cc]"
+                                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/5 hover:text-[#0088cc]"
                                     >
                                         <MessageCircle className="h-4 w-4" />
                                     </Link>
@@ -136,7 +136,7 @@ export function LanguageHero({ language, isFavorite, userId }: LanguageHeroProps
                                         href={language.websiteUrl}
                                         target="_blank"
                                         aria-label="Website"
-                                        className="text-muted-foreground transition-colors hover:text-primary"
+                                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary"
                                     >
                                         <Globe className="h-4 w-4" />
                                     </Link>

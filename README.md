@@ -27,62 +27,18 @@ A platform for creating and documenting constructed languages. Live at [lingocon
 
 ## Development Setup
 
-Follow these steps to get a local development environment running.
-
-### 1. Prerequisites
-
-- **Node.js 18+**
-- **PostgreSQL** database (local or remote)
-- **GitHub Account** (for OAuth)
-
-### 2. Install Dependencies
+**Quick start** (Node 18+ and Docker recommended):
 
 ```bash
-npm install
-```
-
-### 3. Environment Configuration
-
-Copy the example environment file:
-
-```bash
-cp .env.example .env
-```
-
-Open `.env`. For local development, you only need to configure the database and enable `DEV_MODE`.
-
-```bash
-# Development Mode (Bypasses authentication)
-DEV_MODE="true"
-
-# Database (Required)
-DATABASE_URL="postgresql://user:password@localhost:5432/langua?schema=public"
-```
-
-> [!TIP]
-> **DEV_MODE="true"** allows you to use the app without configuring GitHub OAuth or NextAuth secrets. It simulates a verified user environment via a fixed local user (see `lib/constants/dev-user.ts`). Never enable this in production.
-
-### 4. Database Setup
-
-Create the database and run migrations:
-
-```bash
-# Create and migrate
-npx prisma migrate dev
-
-# (Optional) Seed the database if a seed script exists
-# npm run db:seed
-```
-
-### 5. Run Development Server
-
-Start the local development server:
-
-```bash
+npm run setup      # deps, Postgres, migrations — see SETUP.md
 npm run dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) to see the app.
+Open [http://localhost:3000](http://localhost:3000). With `DEV_MODE=true` (default from `.env.example`) you are signed in as `dev@localhost` — no OAuth required.
+
+For demo content: `npm run setup:full` (sample language + official modules).
+
+**Full guide:** [SETUP.md](SETUP.md) — manual steps, flags, troubleshooting, optional env vars.
 
 ## Project structure
 

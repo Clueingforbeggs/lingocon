@@ -3,6 +3,8 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "setup:full": "bash scripts/setup.sh --full",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

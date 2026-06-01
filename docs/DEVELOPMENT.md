@@ -1,20 +1,19 @@
 # Local development
 
+> **First time here?** Start with **[SETUP.md](../SETUP.md)** — one command (`npm run setup`) gets Postgres, migrations, and the dev server ready.
+
 This document expands on the root README with **environment**, **scripts**, and **troubleshooting** details contributors hit most often.
 
 ## Requirements
 
 - **Node.js 18+** (match the version used in production if you deploy).
-- **PostgreSQL** reachable from your machine.
+- **PostgreSQL** reachable from your machine (or Docker via `npm run setup`).
 - A GitHub or Google OAuth app **only if** you turn `DEV_MODE` off.
 
 ## First-time setup
 
 ```bash
-npm install
-cp .env.example .env
-# Edit .env — at minimum DATABASE_URL and DEV_MODE for local work
-npm run db:migrate
+npm run setup    # or npm run setup:full for demo data — see SETUP.md
 npm run dev
 ```
 
@@ -52,6 +51,8 @@ Never commit `.env` files or production secrets.
 
 | Script                | Description                                                              |
 | --------------------- | ------------------------------------------------------------------------ |
+| `npm run setup`       | One-shot local setup: `.env`, Docker Postgres, install, migrate.       |
+| `npm run setup:full`  | Same as `setup`, plus sample language and official modules seeds.        |
 | `npm run dev`         | Next.js development server with hot reload.                              |
 | `npm run build`       | Production build — run before opening a PR that touches types or routes. |
 | `npm run lint`        | ESLint via Next.js config.                                               |

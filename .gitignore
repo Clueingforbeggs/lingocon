@@ -42,8 +42,9 @@ next-env.d.ts
 #Public
 /public
 
-#scripts
-/scripts
+#scripts (keep setup.sh tracked for npm run setup)
+/scripts/*
+!/scripts/setup.sh
 build_log.txt
 
 nginx.conf.example

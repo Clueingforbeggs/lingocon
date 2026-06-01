@@ -211,6 +211,14 @@ function LanguageFamilyBuilderInner({ initialLanguages, currentUserId, onPending
   const [nodes, setNodes, onNodesChange] = useNodesState(initNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initEdges)
 
+  // Keep refs to the latest nodes/edges so stable callbacks can read current
+  // state without being re-created on every change (otherwise the onDeriveWords
+  // injection effect loops forever → React #185 "Maximum update depth exceeded").
+  const nodesRef = useRef(nodes)
+  nodesRef.current = nodes
+  const edgesRef = useRef(edges)
+  edgesRef.current = edges
+
   // Sync nodes/edges when layout becomes ready
   useEffect(() => {
     if (isReady) {
@@ -238,13 +246,14 @@ function LanguageFamilyBuilderInner({ initialLanguages, currentUserId, onPending
     targetName: string
   } | null>(null)
 
-  // Wire up derive callbacks into node data
+  // Wire up derive callbacks into node data. Reads latest nodes/edges from refs
+  // so the callback identity is stable (empty deps) and doesn't retrigger the
+  // injection effect below.
   const handleDeriveFromNode = useCallback((nodeId: string) => {
-    // Find the first child of this node that the current user owns
-    const childEdge = edges.find(e => e.source === nodeId)
+    const childEdge = edgesRef.current.find(e => e.source === nodeId)
     if (!childEdge) return
-    const sourceNode = nodes.find(n => n.id === nodeId)
-    const targetNode = nodes.find(n => n.id === childEdge.target)
+    const sourceNode = nodesRef.current.find(n => n.id === nodeId)
+    const targetNode = nodesRef.current.find(n => n.id === childEdge.target)
     if (!sourceNode || !targetNode) return
 
     setDerivation({
@@ -253,9 +262,13 @@ function LanguageFamilyBuilderInner({ initialLanguages, currentUserId, onPending
       targetId: childEdge.target,
       targetName: targetNode.data.label,
     })
-  }, [edges, nodes])
+  }, [])
 
-  // Update node data to include derive callback
+  // Inject the derive-words callback into node data. Keyed on the node set's
+  // structure (ids + hasChildren) rather than object identity: the setNodes
+  // below produces new object identities but an identical key, so this runs once
+  // per real structural change instead of looping forever (React #185).
+  const nodeDeriveKey = nodes.map(n => `${n.id}:${n.data?.hasChildren ? 1 : 0}`).join("|")
   useEffect(() => {
     setNodes(nds => nds.map(n => ({
       ...n,
@@ -264,7 +277,8 @@ function LanguageFamilyBuilderInner({ initialLanguages, currentUserId, onPending
         onDeriveWords: n.data.hasChildren ? () => handleDeriveFromNode(n.id) : undefined,
       },
     })))
-  }, [handleDeriveFromNode, setNodes])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeDeriveKey, handleDeriveFromNode, setNodes])
 
   // Undo/Redo stack
   type Snapshot = { edges: Edge[]; nodes: Node[]; pending: { id: string; parentId: string | null }[] }

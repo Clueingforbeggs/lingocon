@@ -20,9 +20,13 @@ export async function middleware(request: NextRequest) {
   const slug = match[1]
 
   try {
-    // We cannot use Prisma in Edge middleware, so we call an internal API route
-    // Use an absolute URL for the fetch
-    const url = new URL(`/api/internal/slug-reservation/${slug}`, request.url)
+    // We cannot use Prisma in Edge middleware, so we call an internal API route.
+    // Target the app's own loopback HTTP origin rather than request.url: behind a
+    // TLS-terminating proxy request.url is https, which makes the self-call attempt
+    // a TLS handshake against the plain-HTTP Next server (ERR_SSL_PACKET_LENGTH_TOO_LONG).
+    const internalOrigin =
+      process.env.INTERNAL_API_ORIGIN || `http://127.0.0.1:${process.env.PORT || "3000"}`
+    const url = new URL(`/api/internal/slug-reservation/${slug}`, internalOrigin)
     
     // Add a short timeout so we don't hang requests if the DB is slow
     const controller = new AbortController()

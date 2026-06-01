@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getUserId, canEditLanguage } from "@/lib/auth-helpers"
 import { parseCSV, validateCSVData } from "@/lib/utils/csv-parser"
+import { suggestIpaFromLemma } from "@/lib/utils/ipa-from-lemma"
 import { revalidatePath } from "next/cache"
 
 export const dynamic = "force-dynamic"
@@ -66,6 +67,12 @@ export async function POST(request: NextRequest) {
     })
     const existingLemmas = new Set(existingEntries.map((e) => e.lemma.trim()))
 
+    const scriptSymbols = await prisma.scriptSymbol.findMany({
+      where: { languageId },
+      select: { symbol: true, capitalSymbol: true, ipa: true },
+    })
+    const canSuggestIpa = scriptSymbols.some((s) => s.ipa)
+
     // Deduplicate within the CSV itself (case-sensitive) and against existing DB entries
     const created: string[] = []
     const skipped: string[] = []
@@ -115,7 +122,9 @@ export async function POST(request: NextRequest) {
         languageId,
         lemma,
         gloss: row.gloss.trim(),
-        ipa: row.ipa?.trim() || null,
+        ipa:
+          row.ipa?.trim() ||
+          (canSuggestIpa ? suggestIpaFromLemma(lemma, scriptSymbols) || null : null),
         partOfSpeech: row.partOfSpeech?.trim() || null,
         notes: row.notes?.trim() || null,
         etymology: row.etymology?.trim() || null,

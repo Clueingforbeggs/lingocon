@@ -839,6 +839,7 @@ export function DictionaryManager({
         onOpenChange={setIsBulkAddOpen}
         onSubmit={handleCreate}
         isPending={isPending}
+        symbols={symbols}
       />
 
       {isBulkEditOpen && (

@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { StatusIndicator } from "@/components/status-indicator"
 import { useAutoSave } from "@/lib/hooks/use-auto-save"
 import { validateStringAgainstAlphabet, validatePhonotactics } from "@/lib/utils/alphabet-validation"
+import { suggestIpaFromLemma } from "@/lib/utils/ipa-from-lemma"
 import { AudioRecorder } from "@/components/audio-recorder"
 import type { DictionaryEntry, ScriptSymbol } from "@prisma/client"
 
@@ -132,22 +133,11 @@ export function DictionaryEntryDialog({
   const suggestIpa = () => {
     if (!formData.lemma || !symbols || symbols.length === 0) return
 
-    // Create a map of native symbols to IPA
-    const ipaMap = new Map<string, string>()
-    symbols.forEach((s) => {
-      if (s.symbol && s.ipa) {
-        ipaMap.set(s.symbol, s.ipa)
-        if (s.capitalSymbol) {
-          ipaMap.set(s.capitalSymbol, s.ipa)
-        }
-      }
-    })
-
-    // Transliterate character by character, keeping unrecognized chars as is
-    const suggested = formData.lemma
-      .split("")
-      .map((char) => ipaMap.get(char) || char)
-      .join("")
+    const suggested = suggestIpaFromLemma(formData.lemma, symbols)
+    if (!suggested) {
+      toast.error("No IPA mappings found in your alphabet")
+      return
+    }
 
     handleFieldChange("ipa", suggested)
     toast.success("IPA suggested based on alphabet")

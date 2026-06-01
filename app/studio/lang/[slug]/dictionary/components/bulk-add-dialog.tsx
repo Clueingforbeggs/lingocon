@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input"
 import { Plus, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { suggestIpaFromLemma } from "@/lib/utils/ipa-from-lemma"
+import type { ScriptSymbol } from "@prisma/client"
 
 interface BulkAddRow {
   id: string
@@ -40,6 +42,7 @@ interface BulkAddDialogProps {
   onOpenChange: (open: boolean) => void
   onSubmit: (data: { lemma: string; gloss: string; ipa: string; partOfSpeech: string; notes: string }) => Promise<void>
   isPending?: boolean
+  symbols?: ScriptSymbol[]
 }
 
 export function BulkAddDialog({
@@ -47,6 +50,7 @@ export function BulkAddDialog({
   onOpenChange,
   onSubmit,
   isPending,
+  symbols = [],
 }: BulkAddDialogProps) {
   const [rows, setRows] = useState<BulkAddRow[]>(() =>
     Array.from({ length: 5 }, createEmptyRow)
@@ -55,10 +59,17 @@ export function BulkAddDialog({
   const [errors, setErrors] = useState<Record<string, Set<string>>>({})
   const tableRef = useRef<HTMLDivElement>(null)
 
+  const canSuggestIpa = symbols.some((s) => s.ipa)
+
   const updateRow = useCallback((id: string, field: keyof BulkAddRow, value: string) => {
-    setRows(prev => prev.map(row =>
-      row.id === id ? { ...row, [field]: value } : row
-    ))
+    setRows(prev => prev.map(row => {
+      if (row.id !== id) return row
+      const updated = { ...row, [field]: value }
+      if (field === "lemma" && !row.ipa.trim() && canSuggestIpa) {
+        updated.ipa = suggestIpaFromLemma(value, symbols)
+      }
+      return updated
+    }))
     // Clear error for this field
     setErrors(prev => {
       const rowErrors = prev[id]
@@ -71,7 +82,21 @@ export function BulkAddDialog({
       }
       return { ...prev, [id]: updated }
     })
-  }, [])
+  }, [canSuggestIpa, symbols])
+
+  const fillIpaForEmptyRows = useCallback(() => {
+    if (!canSuggestIpa) {
+      toast.error("Add IPA values to your alphabet symbols first")
+      return
+    }
+    setRows(prev =>
+      prev.map(row => {
+        if (!row.lemma.trim() || row.ipa.trim()) return row
+        return { ...row, ipa: suggestIpaFromLemma(row.lemma, symbols) }
+      })
+    )
+    toast.success("IPA filled from alphabet mappings")
+  }, [canSuggestIpa, symbols])
 
   const addRows = useCallback((count: number = 5) => {
     setRows(prev => [...prev, ...Array.from({ length: count }, createEmptyRow)])
@@ -139,10 +164,14 @@ export function BulkAddDialog({
 
     for (const row of filledRows) {
       try {
+        const ipa =
+          row.ipa.trim() ||
+          (canSuggestIpa ? suggestIpaFromLemma(row.lemma.trim(), symbols) : "")
+
         await onSubmit({
           lemma: row.lemma.trim(),
           gloss: row.gloss.trim(),
-          ipa: row.ipa.trim(),
+          ipa,
           partOfSpeech: row.partOfSpeech.trim(),
           notes: row.notes.trim(),
         })
@@ -176,6 +205,9 @@ export function BulkAddDialog({
           <DialogTitle>Bulk Add Entries</DialogTitle>
           <DialogDescription>
             Add multiple dictionary entries at once. Tab from the last field to add a new row.
+            {canSuggestIpa && (
+              <> IPA is auto-filled from your alphabet when the IPA field is left empty.</>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -299,6 +331,17 @@ export function BulkAddDialog({
             <Plus className="h-3.5 w-3.5" />
             Add 10 Rows
           </Button>
+          {canSuggestIpa && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={fillIpaForEmptyRows}
+              disabled={submitting}
+            >
+              Fill IPA from alphabet
+            </Button>
+          )}
           <span className="text-xs text-muted-foreground ml-auto">
             {filledCount} {filledCount === 1 ? "entry" : "entries"} ready
           </span>

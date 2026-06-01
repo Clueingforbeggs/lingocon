@@ -16,19 +16,9 @@ import {
     YAxis,
 } from "recharts"
 
-/**
- * Theme-aware data-visualisation palette. These read the CSS variables defined
- * in globals.css, so charts automatically follow the active palette (Aurora /
- * Classic) and light / dark mode without any extra wiring.
- */
-export const CHART_COLORS = [
-    "hsl(var(--chart-1))",
-    "hsl(var(--chart-2))",
-    "hsl(var(--chart-3))",
-    "hsl(var(--chart-4))",
-    "hsl(var(--chart-5))",
-    "hsl(var(--chart-6))",
-]
+import { CHART_COLORS } from "@/components/admin/chart-colors"
+
+export { CHART_COLORS }
 
 const AXIS_PROPS = {
     stroke: "hsl(var(--muted-foreground))",

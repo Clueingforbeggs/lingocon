@@ -14,8 +14,8 @@ import {
     TrendAreaChart,
     GroupedBarChart,
     CategoryDonutChart,
-    CHART_COLORS
 } from "@/components/admin/charts"
+import { CHART_COLORS } from "@/components/admin/chart-colors"
 import {
     getPlatformOverview,
     getRecentSignups,

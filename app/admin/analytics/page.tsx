@@ -25,8 +25,8 @@ import {
     GroupedBarChart,
     CategoryDonutChart,
     RankedBarChart,
-    CHART_COLORS
 } from "@/components/admin/charts"
+import { CHART_COLORS } from "@/components/admin/chart-colors"
 
 type GrowthPoint = {
     date: string

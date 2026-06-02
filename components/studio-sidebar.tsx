@@ -3,9 +3,9 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { BookOpen, FileText, Table2, Languages, Clock } from "lucide-react"
+import { BookOpen, FileText, Table2, Languages, Clock, Lock } from "lucide-react"
 import { formatDate } from "@/lib/utils"
-import { STUDIO_TABS, tabHref, isTabActive, type ModuleNavTab } from "@/lib/studio-nav"
+import { STUDIO_TABS, TAB_WRITE_PERMISSION, tabHref, isTabActive, type ModuleNavTab } from "@/lib/studio-nav"
 import { ModuleIcon } from "@/components/modules/module-icon"
 
 interface StudioLanguage {
@@ -31,11 +31,15 @@ export function StudioNavContent({
   language,
   basePath,
   moduleTabs = [],
+  userPermissions = [],
+  isOwner = false,
   onNavigate,
 }: {
   language: StudioLanguage
   basePath: string
   moduleTabs?: ModuleNavTab[]
+  userPermissions?: string[]
+  isOwner?: boolean
   onNavigate?: () => void
 }) {
   const pathname = usePathname()
@@ -87,6 +91,8 @@ export function StudioNavContent({
             const href = tabHref(basePath, tab.segment)
             const active = isTabActive(pathname, basePath, tab.segment)
             const Icon = tab.icon
+            const requiredPermission = TAB_WRITE_PERMISSION[tab.segment]
+            const locked = !isOwner && !!requiredPermission && !userPermissions.includes(requiredPermission)
             return (
               <li key={href}>
                 <Link
@@ -105,7 +111,8 @@ export function StudioNavContent({
                       active ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
                     )}
                   />
-                  {tab.name}
+                  <span className="flex-1">{tab.name}</span>
+                  {locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground/50" />}
                 </Link>
               </li>
             )
@@ -157,14 +164,18 @@ export function StudioSidebar({
   language,
   basePath,
   moduleTabs = [],
+  userPermissions = [],
+  isOwner = false,
 }: {
   language: StudioLanguage
   basePath: string
   moduleTabs?: ModuleNavTab[]
+  userPermissions?: string[]
+  isOwner?: boolean
 }) {
   return (
     <aside className="hidden w-64 shrink-0 overflow-y-auto border-r border-border/40 bg-card/30 backdrop-blur-sm thin-scrollbar md:block">
-      <StudioNavContent language={language} basePath={basePath} moduleTabs={moduleTabs} />
+      <StudioNavContent language={language} basePath={basePath} moduleTabs={moduleTabs} userPermissions={userPermissions} isOwner={isOwner} />
     </aside>
   )
 }

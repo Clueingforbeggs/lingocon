@@ -1,7 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { getUserId, canEditLanguage } from "@/lib/auth-helpers"
+import { getUserId, canEditScope } from "@/lib/auth-helpers"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
@@ -24,7 +24,7 @@ export async function createExampleSentence(input: z.infer<typeof createExampleS
     try {
         const validated = createExampleSchema.parse(input)
 
-        const canEdit = await canEditLanguage(validated.languageId, userId)
+        const canEdit = await canEditScope(validated.languageId, userId, "write:dictionary")
         if (!canEdit) return { error: "You don't have permission to edit this language" }
 
         // Get current max order
@@ -71,7 +71,7 @@ export async function updateExampleSentence(input: z.infer<typeof updateExampleS
     try {
         const validated = updateExampleSchema.parse(input)
 
-        const canEdit = await canEditLanguage(validated.languageId, userId)
+        const canEdit = await canEditScope(validated.languageId, userId, "write:dictionary")
         if (!canEdit) return { error: "You don't have permission to edit this language" }
 
         const example = await prisma.exampleSentence.update({
@@ -106,7 +106,7 @@ export async function deleteExampleSentence(id: string, languageId: string) {
     const userId = await getUserId()
     if (!userId) return { error: "Unauthorized" }
 
-    const canEdit = await canEditLanguage(languageId, userId)
+    const canEdit = await canEditScope(languageId, userId, "write:dictionary")
     if (!canEdit) return { error: "You don't have permission to edit this language" }
 
     try {

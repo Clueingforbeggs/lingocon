@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { getUserId, isLanguageOwner, canEditLanguage } from "@/lib/auth-helpers"
 import { redirect, notFound } from "next/navigation"
 import { LanguageSettings } from "./language-settings"
-import { Collaborators } from "./collaborators"
+import { Collaborators, TransferOwnershipCard } from "./collaborators"
 import { ParentLanguageCard } from "./parent-language-card"
 import { getLanguageFamilyTree } from "@/app/actions/language-family"
 import { getDescendantIds } from "@/lib/utils/family-graph"
@@ -149,7 +149,8 @@ export default async function SettingsPage({
         currentSlug={slug}
         isOwner={canEdit}
       />
-      <Collaborators languageId={language.id} isOwner={owner} />
+      <Collaborators languageId={language.id} languageSlug={slug} isOwner={owner} />
+      {owner && <TransferOwnershipCard languageId={language.id} languageSlug={slug} />}
     </div>
   )
 }

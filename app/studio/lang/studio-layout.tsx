@@ -30,10 +30,12 @@ interface StudioLayoutProps {
   }
   /** Studio-panel tabs contributed by the user's enabled modules. */
   moduleTabs?: ModuleNavTab[]
+  userPermissions?: string[]
+  isOwner?: boolean
   children: React.ReactNode
 }
 
-export function StudioLayout({ language, moduleTabs = [], children }: StudioLayoutProps) {
+export function StudioLayout({ language, moduleTabs = [], userPermissions = [], isOwner = false, children }: StudioLayoutProps) {
   const pathname = usePathname()
   const basePath = `/studio/lang/${language.slug}`
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -61,6 +63,8 @@ export function StudioLayout({ language, moduleTabs = [], children }: StudioLayo
                   language={language}
                   basePath={basePath}
                   moduleTabs={moduleTabs}
+                  userPermissions={userPermissions}
+                  isOwner={isOwner}
                   onNavigate={() => setMobileOpen(false)}
                 />
               </SheetContent>
@@ -102,7 +106,7 @@ export function StudioLayout({ language, moduleTabs = [], children }: StudioLayo
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Desktop */}
-        <StudioSidebar language={language} basePath={basePath} moduleTabs={moduleTabs} />
+        <StudioSidebar language={language} basePath={basePath} moduleTabs={moduleTabs} userPermissions={userPermissions} isOwner={isOwner} />
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background relative scroll-smooth thin-scrollbar">

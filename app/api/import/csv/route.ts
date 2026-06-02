@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getUserId, canEditLanguage } from "@/lib/auth-helpers"
+import { getUserId, canEditScope } from "@/lib/auth-helpers"
 import { parseCSV, validateCSVData } from "@/lib/utils/csv-parser"
 import { suggestIpaFromLemma } from "@/lib/utils/ipa-from-lemma"
 import { revalidatePath } from "next/cache"
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify edit permission
-    const canEdit = await canEditLanguage(languageId, userId)
+    const canEdit = await canEditScope(languageId, userId, "write:dictionary")
     if (!canEdit) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }

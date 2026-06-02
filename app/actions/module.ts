@@ -1,7 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { getUserId, canEditLanguage } from "@/lib/auth-helpers"
+import { getUserId, canEditScope } from "@/lib/auth-helpers"
 import { revalidatePath } from "next/cache"
 import { ActionResult } from "@/lib/types/action-result"
 import { parseRules, applyPipeline } from "@/lib/utils/sound-change"
@@ -190,7 +190,7 @@ export async function addModule(input: AddModuleInput): Promise<ActionResult> {
 
   // Adding to a specific language requires edit rights on that language.
   if (languageId) {
-    const allowed = await canEditLanguage(languageId, userId)
+    const allowed = await canEditScope(languageId, userId, "manage:modules")
     if (!allowed) return { error: "You can't add modules to this language" }
   }
 
@@ -416,7 +416,7 @@ export async function previewModuleTransform(
 ): Promise<TransformPreview> {
   const userId = await getUserId()
   if (!userId) return { error: "Unauthorized" }
-  if (!(await canEditLanguage(languageId, userId))) return { error: "Forbidden" }
+  if (!(await canEditScope(languageId, userId, "manage:modules"))) return { error: "Forbidden" }
 
   const loaded = await loadTransformerRules(userId, moduleId, languageId)
   if (!loaded.ok) return { error: loaded.error }
@@ -448,7 +448,7 @@ export async function applyModuleTransform(
 ): Promise<TransformApply> {
   const userId = await getUserId()
   if (!userId) return { error: "Unauthorized" }
-  if (!(await canEditLanguage(languageId, userId))) return { error: "Forbidden" }
+  if (!(await canEditScope(languageId, userId, "manage:modules"))) return { error: "Forbidden" }
 
   const loaded = await loadTransformerRules(userId, moduleId, languageId)
   if (!loaded.ok) return { error: loaded.error }

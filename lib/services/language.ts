@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { canEditLanguage } from "@/lib/auth-helpers"
+import { canEditScope } from "@/lib/auth-helpers"
 import { UnauthorizedError, NotFoundError, ConflictError } from "@/lib/errors"
 import {
   createLanguageSchema,
@@ -42,7 +42,7 @@ export async function createLanguage(input: CreateLanguageInput, userId: string)
 export async function updateLanguage(input: UpdateLanguageInput, userId: string) {
   const validated = updateLanguageSchema.parse(input)
 
-  const canEdit = await canEditLanguage(validated.id, userId)
+  const canEdit = await canEditScope(validated.id, userId, "write:settings")
   if (!canEdit) {
     throw new UnauthorizedError()
   }

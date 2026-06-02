@@ -20,11 +20,11 @@ async function getLanguage(slug: string, userId: string | null) {
 
   // Allow access if user is owner or collaborator (skip in dev mode)
   if (process.env.DEV_MODE !== "true" && userId) {
-    const { canEditLanguage } = await import("@/lib/auth-helpers")
-    const canEdit = await canEditLanguage(language.id, userId)
-    if (!canEdit) {
-      return null
-    }
+    const { canEditScope } = await import("@/lib/auth-helpers")
+    const canEdit =
+      (await canEditScope(language.id, userId, "write:texts")) ||
+      (await canEditScope(language.id, userId, "draft:texts"))
+    if (!canEdit) return null
   }
 
   return language

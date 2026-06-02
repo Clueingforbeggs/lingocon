@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { getUserId, canViewLanguage } from "@/lib/auth-helpers"
+import { getUserId, canViewLanguage, EDITOR_DEFAULT_PERMISSIONS } from "@/lib/auth-helpers"
 import { redirect, notFound } from "next/navigation"
 import { StudioLayout } from "../studio-layout"
 import { FontLoader } from "@/components/font-loader"
@@ -76,6 +76,23 @@ export default async function StudioLangLayout({
     notFound()
   }
 
+  const isOwner = userId === language.ownerId
+
+  // Fetch collaborator permissions for non-owners
+  let userPermissions: string[] = []
+  if (userId && !isOwner) {
+    const collab = await prisma.languageCollaborator.findUnique({
+      where: { languageId_userId: { languageId: language.id, userId } },
+      select: { role: true, permissions: true },
+    })
+    // Legacy EDITOR with empty permissions = full default set
+    if (collab?.role === "EDITOR" && collab.permissions.length === 0) {
+      userPermissions = [...EDITOR_DEFAULT_PERMISSIONS]
+    } else {
+      userPermissions = collab?.permissions ?? []
+    }
+  }
+
   // Studio-panel tabs contributed by the current user's enabled modules.
   let moduleTabs: ModuleNavTab[] = []
   if (userId) {
@@ -88,7 +105,7 @@ export default async function StudioLangLayout({
   }
 
   return (
-    <StudioLayout language={language} moduleTabs={moduleTabs}>
+    <StudioLayout language={language} moduleTabs={moduleTabs} userPermissions={userPermissions} isOwner={isOwner}>
       <FontLoader fontUrl={language.fontUrl} fontFamily={language.fontFamily} fontScale={language.fontScale} />
       {children}
     </StudioLayout>

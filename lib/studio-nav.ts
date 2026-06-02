@@ -50,6 +50,19 @@ export interface ModuleNavTab {
     icon?: string | null
 }
 
+/** Maps a tab segment to the write permission required to edit its content. Tabs without an entry are always fully accessible. */
+export const TAB_WRITE_PERMISSION: Record<string, string> = {
+  alphabet: "write:alphabet",
+  phonology: "write:phonology",
+  "sound-changes": "write:phonology",
+  grammar: "write:grammar",
+  dictionary: "write:dictionary",
+  paradigms: "write:paradigms",
+  articles: "write:articles",
+  texts: "write:texts",
+  modules: "manage:modules",
+}
+
 export function tabHref(basePath: string, segment: string): string {
     return segment ? `${basePath}/${segment}` : basePath
 }

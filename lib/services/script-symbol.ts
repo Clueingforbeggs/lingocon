@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { canEditLanguage } from "@/lib/auth-helpers"
+import { canEditScope } from "@/lib/auth-helpers"
 import { UnauthorizedError, NotFoundError, ConflictError, ValidationError } from "@/lib/errors"
 import {
   createScriptSymbolSchema,
@@ -11,7 +11,7 @@ import {
 export async function createSymbol(input: CreateScriptSymbolInput, userId: string) {
   const validated = createScriptSymbolSchema.parse(input)
 
-  const canEdit = await canEditLanguage(validated.languageId, userId)
+  const canEdit = await canEditScope(validated.languageId, userId, "write:alphabet")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -35,7 +35,7 @@ export async function createSymbol(input: CreateScriptSymbolInput, userId: strin
 export async function updateSymbol(input: UpdateScriptSymbolInput, userId: string) {
   const validated = updateScriptSymbolSchema.parse(input)
 
-  const canEdit = await canEditLanguage(validated.languageId, userId)
+  const canEdit = await canEditScope(validated.languageId, userId, "write:alphabet")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -57,7 +57,7 @@ export async function updateSymbol(input: UpdateScriptSymbolInput, userId: strin
 }
 
 export async function deleteSymbol(symbolId: string, languageId: string, userId: string) {
-  const canEdit = await canEditLanguage(languageId, userId)
+  const canEdit = await canEditScope(languageId, userId, "write:alphabet")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -76,7 +76,7 @@ export async function reorderSymbols(
   direction: "up" | "down",
   userId: string
 ) {
-  const canEdit = await canEditLanguage(languageId, userId)
+  const canEdit = await canEditScope(languageId, userId, "write:alphabet")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -132,7 +132,7 @@ export async function saveAlphabetOrder(
     throw new ValidationError("Too many symbols to reorder at once (max 1000)")
   }
 
-  const canEdit = await canEditLanguage(languageId, userId)
+  const canEdit = await canEditScope(languageId, userId, "write:alphabet")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }

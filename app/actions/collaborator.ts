@@ -6,6 +6,7 @@ import { ZodError } from "zod"
 import {
   inviteCollaboratorSchema,
   updateCollaboratorRoleSchema,
+  updateCollaboratorPermissionsSchema,
   removeCollaboratorSchema,
 } from "@/lib/validations/collaborator"
 
@@ -13,7 +14,7 @@ export async function inviteCollaborator(input: {
   languageId: string
   email?: string
   userId?: string
-  role: "OWNER" | "EDITOR" | "VIEWER"
+  permissions: string[]
 }) {
   const userId = await getUserId()
 
@@ -72,12 +73,15 @@ export async function inviteCollaborator(input: {
       return { error: "User is already a collaborator" }
     }
 
+    const role = validated.permissions.length > 0 ? "EDITOR" : "VIEWER"
+
     // Create collaborator
     const collaborator = await prisma.languageCollaborator.create({
       data: {
         languageId: validated.languageId,
         userId: targetUser.id,
-        role: validated.role,
+        role,
+        permissions: validated.permissions,
       },
       include: {
         user: {
@@ -176,6 +180,37 @@ export async function updateCollaboratorRole(input: {
   }
 }
 
+export async function updateCollaboratorPermissions(input: {
+  languageId: string
+  userId: string
+  permissions: string[]
+}) {
+  const callerId = await getUserId()
+  if (!callerId) return { error: "Unauthorized" }
+
+  try {
+    const validated = updateCollaboratorPermissionsSchema.parse(input)
+    const isOwner = await isLanguageOwner(validated.languageId, callerId)
+    if (!isOwner) return { error: "Only the language owner can update collaborator permissions" }
+
+    const role = validated.permissions.length > 0 ? "EDITOR" : "VIEWER"
+
+    const collaborator = await prisma.languageCollaborator.update({
+      where: { languageId_userId: { languageId: validated.languageId, userId: validated.userId } },
+      data: { role, permissions: validated.permissions },
+      include: {
+        user: { select: { id: true, name: true, email: true, image: true } },
+      },
+    })
+
+    return { success: true, data: collaborator }
+  } catch (error) {
+    if (error instanceof ZodError) return { error: error.issues[0]?.message || "Validation failed" }
+    if (error instanceof Error) return { error: error.message }
+    return { error: "Failed to update collaborator permissions" }
+  }
+}
+
 export async function removeCollaborator(input: {
   languageId: string
   userId: string
@@ -222,6 +257,49 @@ export async function removeCollaborator(input: {
     return {
       error: "Failed to remove collaborator",
     }
+  }
+}
+
+export async function transferLanguageOwnership(input: {
+  languageId: string
+  newOwnerId: string
+}) {
+  const userId = await getUserId()
+  if (!userId) return { error: "Unauthorized" }
+
+  const isOwner = await isLanguageOwner(input.languageId, userId)
+  if (!isOwner) return { error: "Only the language owner can transfer ownership" }
+
+  if (input.newOwnerId === userId) return { error: "You are already the owner" }
+
+  const newOwner = await prisma.user.findUnique({
+    where: { id: input.newOwnerId },
+    select: { id: true, name: true },
+  })
+  if (!newOwner) return { error: "User not found" }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Remove new owner from collaborators if they were one
+      await tx.languageCollaborator.deleteMany({
+        where: { languageId: input.languageId, userId: input.newOwnerId },
+      })
+      // Add old owner as Editor
+      await tx.languageCollaborator.upsert({
+        where: { languageId_userId: { languageId: input.languageId, userId } },
+        update: { role: "EDITOR" },
+        create: { languageId: input.languageId, userId, role: "EDITOR" },
+      })
+      // Transfer ownership
+      await tx.language.update({
+        where: { id: input.languageId },
+        data: { ownerId: input.newOwnerId },
+      })
+    })
+    return { success: true }
+  } catch (error) {
+    if (error instanceof Error) return { error: error.message }
+    return { error: "Failed to transfer ownership" }
   }
 }
 

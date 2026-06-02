@@ -355,12 +355,13 @@ model Paradigm {
 }
 
 model LanguageCollaborator {
-  id         String           @id @default(cuid())
-  languageId String
-  userId     String
-  role       CollaboratorRole @default(VIEWER)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id          String           @id @default(cuid())
+  languageId  String
+  userId      String
+  role        CollaboratorRole @default(VIEWER)
+  permissions String[]         @default([])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)

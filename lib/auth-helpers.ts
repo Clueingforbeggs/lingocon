@@ -10,6 +10,9 @@ import { auth } from "@/auth"
 import { getDevUserId } from "./dev-auth"
 import { prisma } from "./prisma"
 import { isAdmin } from "@/lib/admin"
+import type { LanguagePermission } from "@/lib/permissions"
+export { EDITOR_DEFAULT_PERMISSIONS, FULL_EDITOR_PERMISSIONS } from "@/lib/permissions"
+export type { LanguagePermission } from "@/lib/permissions"
 
 /** Returns the authenticated user's id, or `null` for guests / suspended accounts / missing session. */
 export async function getUserId(): Promise<string | null> {
@@ -40,38 +43,61 @@ export async function requireAuth(): Promise<string> {
   return userId
 }
 
+/** Internal helper: fetch language + collaborator in one round-trip. */
+async function getEditAccess(languageId: string, userId: string) {
+  const [language, collaborator] = await Promise.all([
+    prisma.language.findUnique({ where: { id: languageId }, select: { ownerId: true } }),
+    prisma.languageCollaborator.findUnique({
+      where: { languageId_userId: { languageId, userId } },
+      select: { role: true, permissions: true },
+    }),
+  ])
+  return { language, collaborator }
+}
+
 /**
- * Check if user can edit a language (owner or editor collaborator)
+ * Check if user can edit a language at all (owner, or collaborator with any write/manage permission).
+ * Kept for backward compatibility at call sites not yet migrated to canEditScope.
  */
 export async function canEditLanguage(
   languageId: string,
   userId: string | null
 ): Promise<boolean> {
   if (!userId) return false
-
-  // Admins can edit everything
   if (await isAdmin()) return true
 
-  // Check if user is owner
-  const language = await prisma.language.findUnique({
-    where: { id: languageId },
-    select: { ownerId: true },
-  })
-
+  const { language, collaborator } = await getEditAccess(languageId, userId)
   if (language?.ownerId === userId) return true
+  if (!collaborator) return false
 
-  // Check if user is an editor collaborator
-  const collaborator = await prisma.languageCollaborator.findUnique({
-    where: {
-      languageId_userId: {
-        languageId,
-        userId,
-      },
-    },
-    select: { role: true },
-  })
+  // Legacy EDITOR with empty permissions = full access (pre-migration rows)
+  if (collaborator.role === "EDITOR" && collaborator.permissions.length === 0) return true
 
-  return collaborator?.role === "EDITOR"
+  return collaborator.permissions.some(
+    (p) => p.startsWith("write:") || p.startsWith("manage:")
+  )
+}
+
+/**
+ * Check if user has a specific permission scope for a language.
+ * Owners always pass. Use EDITOR_DEFAULT_PERMISSIONS for the available scopes.
+ */
+export async function canEditScope(
+  languageId: string,
+  userId: string | null,
+  permission: LanguagePermission
+): Promise<boolean> {
+  if (!userId) return false
+  if (await isAdmin()) return true
+
+  const { language, collaborator } = await getEditAccess(languageId, userId)
+  if (language?.ownerId === userId) return true
+  if (!collaborator) return false
+
+  // Legacy EDITOR with empty permissions = full access (pre-migration rows)
+  if (collaborator.role === "EDITOR" && collaborator.permissions.length === 0) return true
+
+  return collaborator.permissions.includes(permission)
 }
 
 /**

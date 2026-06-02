@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { canEditLanguage } from "@/lib/auth-helpers"
+import { canEditScope } from "@/lib/auth-helpers"
 import { UnauthorizedError, NotFoundError, ConflictError } from "@/lib/errors"
 import {
   createGrammarPageSchema,
@@ -11,7 +11,7 @@ import {
 export async function createPage(input: CreateGrammarPageInput, userId: string) {
   const validated = createGrammarPageSchema.parse(input)
 
-  const canEdit = await canEditLanguage(validated.languageId, userId)
+  const canEdit = await canEditScope(validated.languageId, userId, "write:grammar")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -48,7 +48,7 @@ export async function createPage(input: CreateGrammarPageInput, userId: string) 
 export async function updatePage(input: UpdateGrammarPageInput, userId: string) {
   const validated = updateGrammarPageSchema.parse(input)
 
-  const canEdit = await canEditLanguage(validated.languageId, userId)
+  const canEdit = await canEditScope(validated.languageId, userId, "write:grammar")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -95,7 +95,7 @@ export async function updatePage(input: UpdateGrammarPageInput, userId: string) 
 }
 
 export async function deletePage(pageId: string, languageId: string, userId: string) {
-  const canEdit = await canEditLanguage(languageId, userId)
+  const canEdit = await canEditScope(languageId, userId, "write:grammar")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -114,7 +114,7 @@ export async function reorderPages(
   direction: "up" | "down",
   userId: string
 ) {
-  const canEdit = await canEditLanguage(languageId, userId)
+  const canEdit = await canEditScope(languageId, userId, "write:grammar")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }

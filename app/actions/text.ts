@@ -3,7 +3,7 @@
  *
  * Flow for every mutation:
  * 1. Resolve the caller with `getUserId`.
- * 2. Authorize via `canEditLanguage` (owners, editors, and admins pass).
+ * 2. Authorize via `canEditScope` with "write:texts" (owners, editors with that permission, and admins pass).
  * 3. Touch Prisma, then `revalidatePath` for both studio and public `/lang/...` URLs.
  *
  * Slugs are unique per `languageId`; when titles change we scan for collisions the same way as on create.
@@ -11,7 +11,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { getUserId, canEditLanguage } from "@/lib/auth-helpers"
+import { getUserId, canEditScope } from "@/lib/auth-helpers"
 import { revalidatePath } from "next/cache"
 import { TextType } from "@prisma/client"
 import { checkContentBadges } from "@/app/actions/badge"
@@ -45,7 +45,7 @@ export async function createText(data: {
   }
 
   // Verify user owns or can edit the language
-  const canEdit = await canEditLanguage(data.languageId, userId)
+  const canEdit = await canEditScope(data.languageId, userId, "write:texts")
   if (!canEdit) {
     return { error: "You don't have permission to add texts to this language" }
   }
@@ -128,7 +128,7 @@ export async function updateText(
     return { error: "Text not found" }
   }
 
-  const canEdit = await canEditLanguage(text.language.id, userId)
+  const canEdit = await canEditScope(text.language.id, userId, "write:texts")
   if (!canEdit) {
     return { error: "You don't have permission to edit this text" }
   }
@@ -187,7 +187,7 @@ export async function deleteText(id: string) {
     return { error: "Text not found" }
   }
 
-  const canEdit = await canEditLanguage(text.language.id, userId)
+  const canEdit = await canEditScope(text.language.id, userId, "write:texts")
   if (!canEdit) {
     return { error: "You don't have permission to delete this text" }
   }

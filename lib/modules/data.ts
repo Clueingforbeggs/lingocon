@@ -5,6 +5,10 @@
  */
 import { prisma } from "@/lib/prisma"
 import type { RuntimeMethod } from "@/lib/modules/runtime-protocol"
+import {
+  buildVowelChartData,
+  extractVowelInventory,
+} from "@/lib/utils/vowel-inventory"
 
 export async function loadModuleData(method: RuntimeMethod, languageId: string) {
   switch (method) {
@@ -27,13 +31,23 @@ export async function loadModuleData(method: RuntimeMethod, languageId: string) 
     }
 
     case "getPhonology": {
-      const symbols = await prisma.scriptSymbol.findMany({
-        where: { languageId },
-        select: { symbol: true, ipa: true, latin: true, name: true },
-        orderBy: { order: "asc" },
-        take: 1000,
-      })
-      return { symbols }
+      const [language, symbols] = await Promise.all([
+        prisma.language.findUnique({
+          where: { id: languageId },
+          select: { metadata: true },
+        }),
+        prisma.scriptSymbol.findMany({
+          where: { languageId },
+          select: { symbol: true, ipa: true, latin: true, name: true },
+          orderBy: { order: "asc" },
+          take: 1000,
+        }),
+      ])
+
+      const vowels = extractVowelInventory(symbols, language?.metadata)
+      const { points: vowelChart, unknown: unknownVowels } = buildVowelChartData(vowels)
+
+      return { symbols, vowels, vowelChart, unknownVowels }
     }
 
     case "getParadigms": {

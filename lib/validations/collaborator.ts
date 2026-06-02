@@ -6,7 +6,7 @@ export const inviteCollaboratorSchema = z.object({
   languageId: z.string().min(1),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   userId: z.string().optional(),
-  role: collaboratorRoleSchema,
+  permissions: z.array(z.string()).default([]),
 }).refine((data) => data.email || data.userId, {
   message: "Either email or user selection is required",
   path: ["email"],
@@ -16,6 +16,12 @@ export const updateCollaboratorRoleSchema = z.object({
   languageId: z.string().min(1),
   userId: z.string().min(1),
   role: collaboratorRoleSchema,
+})
+
+export const updateCollaboratorPermissionsSchema = z.object({
+  languageId: z.string().min(1),
+  userId: z.string().min(1),
+  permissions: z.array(z.string()),
 })
 
 export const removeCollaboratorSchema = z.object({

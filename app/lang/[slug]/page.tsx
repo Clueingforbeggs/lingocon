@@ -10,6 +10,7 @@ import { FavoriteButton } from "@/components/favorite-button"
 import { Languages, BookOpen, FileText, ArrowRight, Calendar, Clock, Newspaper, BookMarked, Flag, Globe, MessageSquare, MessageCircle, Heart } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import { LanguageHero } from "./components/language-hero"
+import { MaintainersSection } from "./components/maintainers-section"
 import { NavBento } from "./components/nav-bento"
 import { formatDistanceToNow } from "date-fns"
 import { getUserId } from "@/lib/auth-helpers"
@@ -41,6 +42,15 @@ async function getLanguage(slug: string) {
       websiteUrl: true,
       createdAt: true,
       updatedAt: true,
+      owner: {
+        select: { id: true, name: true, image: true },
+      },
+      collaborators: {
+        where: { role: "EDITOR" },
+        select: {
+          user: { select: { id: true, name: true, image: true } },
+        },
+      },
       _count: {
         select: {
           scriptSymbols: true,
@@ -224,6 +234,11 @@ export default async function PublicLanguagePage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchema) }} />
       <LanguageHero language={language} isFavorite={isFavorite} userId={userId} />
+
+      <MaintainersSection
+        owner={language.owner}
+        editors={language.collaborators.map((c) => c.user)}
+      />
 
       {/* Language Family */}
       {familyTree && (

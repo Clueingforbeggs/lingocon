@@ -78,76 +78,209 @@ const BASE_STYLE = `
   html[data-theme="dark"] th, html[data-theme="dark"] td { border-color: #334155; }
   th { font-weight: 600; color: #475569; }
   html[data-theme="dark"] th { color: #94a3b8; }
+  .lc-vowel-wrap { display: flex; flex-direction: column; gap: 10px; }
+  .lc-vowel-empty { line-height: 1.5; }
+  .lc-vowel-empty p { margin: 0 0 6px; }
+  .lc-vowel-legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 12px; }
+  .lc-vowel-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .lc-vowel-table { margin-top: 4px; font-size: 12px; }
+  .lc-vowel-table code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 `
 
 // ── Widget bundles ──────────────────────────────────────────────────────────
 
 const VOWEL_CHART = `
 host.onInit(async function () {
-  const root = document.getElementById("app");
-  root.textContent = "Loading phonology…";
-  // Approx position on the IPA vowel quadrilateral: x = backness (0 front → 1 back), y = openness (0 close → 1 open).
-  const POS = {
-    "i":[0,0],"y":[0,0],"ɨ":[0.5,0],"ʉ":[0.5,0],"ɯ":[1,0],"u":[1,0],
-    "ɪ":[0.15,0.18],"ʏ":[0.15,0.18],"ʊ":[0.85,0.18],
-    "e":[0,0.33],"ø":[0,0.33],"ɘ":[0.5,0.33],"ɵ":[0.5,0.33],"ɤ":[1,0.33],"o":[1,0.33],
-    "ə":[0.5,0.5],
-    "ɛ":[0,0.66],"œ":[0,0.66],"ɜ":[0.5,0.66],"ɞ":[0.5,0.66],"ʌ":[1,0.66],"ɔ":[1,0.66],
-    "æ":[0.1,0.85],"ɐ":[0.5,0.85],
-    "a":[0,1],"ɶ":[0,1],"ä":[0.5,1],"ɑ":[1,1],"ɒ":[1,1]
-  };
-  try {
-    const res = await host.request("getPhonology");
-    const symbols = (res && res.symbols) || [];
-    const points = [];
-    for (const s of symbols) {
-      const ipa = (s.ipa || "").trim();
-      for (const ch of ipa) {
-        if (POS[ch]) { points.push({ label: ipa, pos: POS[ch] }); break; }
-      }
+  var root = document.getElementById("app");
+  root.textContent = "Loading vowel chart…";
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function project(x, y, W, H, pad) {
+    var frontInset = 0.18 * y;
+    var nx = frontInset + x * (1 - frontInset);
+    return {
+      cx: pad.l + nx * (W - pad.l - pad.r),
+      cy: pad.t + y * (H - pad.t - pad.b),
+    };
+  }
+
+  function addText(svg, ns, x, y, text, attrs) {
+    var t = document.createElementNS(ns, "text");
+    t.setAttribute("x", String(x));
+    t.setAttribute("y", String(y));
+    t.setAttribute("font-size", "11");
+    t.setAttribute("fill", "currentColor");
+    t.setAttribute("opacity", "0.55");
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) { t.setAttribute(k, attrs[k]); });
     }
+    t.textContent = text;
+    svg.appendChild(t);
+  }
+
+  try {
+    var res = await host.request("getPhonology");
+    var points = (res && res.vowelChart) || [];
+    var unknown = (res && res.unknownVowels) || [];
     root.textContent = "";
-    if (points.length === 0) {
-      root.innerHTML = '<p class="lc-muted">No vowels found in this language\\'s phonology. Add IPA values to your script symbols to plot them here.</p>';
+
+    if (!points.length) {
+      root.innerHTML =
+        '<div class="lc-vowel-empty">' +
+        '<p><strong>No vowels to plot yet.</strong></p>' +
+        '<p class="lc-muted">Add vowels in Studio → Phonology (manual inventory) or assign IPA to your alphabet symbols.</p>' +
+        (unknown.length
+          ? '<p class="lc-muted">Unrecognized symbols: ' + esc(unknown.join(", ")) + "</p>"
+          : "") +
+        "</div>";
       host.reportHeight();
       return;
     }
-    const W = 320, H = 240, padL = 30, padT = 14, padR = 30, padB = 24;
-    const ns = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(ns, "svg");
+
+    var W = 380, H = 300;
+    var pad = { l: 42, t: 22, r: 18, b: 36 };
+    var ns = "http://www.w3.org/2000/svg";
+    var wrap = document.createElement("div");
+    wrap.className = "lc-vowel-wrap";
+
+    var svg = document.createElementNS(ns, "svg");
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     svg.setAttribute("width", "100%");
-    svg.style.maxWidth = "420px";
-    function px(x) { return padL + x * (W - padL - padR); }
-    function py(y) { return padT + y * (H - padT - padB); }
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "IPA vowel quadrilateral with " + points.length + " vowels");
+    svg.style.maxWidth = "480px";
+    svg.style.display = "block";
+
     // Trapezoid frame
-    const poly = document.createElementNS(ns, "polygon");
-    poly.setAttribute("points", px(0)+","+py(0)+" "+px(1)+","+py(0)+" "+px(1)+","+py(1)+" "+px(0.18)+","+py(1));
-    poly.setAttribute("fill", "none");
-    poly.setAttribute("stroke", "#94a3b8");
-    poly.setAttribute("stroke-width", "1");
-    svg.appendChild(poly);
-    for (const p of points) {
-      const cx = px(p.pos[0]), cy = py(p.pos[1]);
-      const dot = document.createElementNS(ns, "circle");
-      dot.setAttribute("cx", cx); dot.setAttribute("cy", cy); dot.setAttribute("r", "3.5");
-      dot.setAttribute("fill", "#7c3aed");
-      svg.appendChild(dot);
-      const t = document.createElementNS(ns, "text");
-      t.setAttribute("x", cx + 6); t.setAttribute("y", cy + 4);
-      t.setAttribute("font-size", "12"); t.setAttribute("fill", "currentColor");
-      t.textContent = p.label;
-      svg.appendChild(t);
+    var topL = project(0, 0, W, H, pad);
+    var topR = project(1, 0, W, H, pad);
+    var botR = project(1, 1, W, H, pad);
+    var botL = project(0, 1, W, H, pad);
+    var frame = document.createElementNS(ns, "polygon");
+    frame.setAttribute(
+      "points",
+      topL.cx + "," + topL.cy + " " +
+      topR.cx + "," + topR.cy + " " +
+      botR.cx + "," + botR.cy + " " +
+      botL.cx + "," + botL.cy
+    );
+    frame.setAttribute("fill", "rgba(124,58,237,0.04)");
+    frame.setAttribute("stroke", "currentColor");
+    frame.setAttribute("stroke-opacity", "0.25");
+    frame.setAttribute("stroke-width", "1.5");
+    svg.appendChild(frame);
+
+    // Height grid lines
+    var heights = [
+      { y: 0, label: "Close" },
+      { y: 0.33, label: "Close-mid" },
+      { y: 0.5, label: "Mid" },
+      { y: 0.66, label: "Open-mid" },
+      { y: 1, label: "Open" },
+    ];
+    heights.forEach(function (h) {
+      var a = project(0, h.y, W, H, pad);
+      var b = project(1, h.y, W, H, pad);
+      var line = document.createElementNS(ns, "line");
+      line.setAttribute("x1", String(a.cx));
+      line.setAttribute("y1", String(a.cy));
+      line.setAttribute("x2", String(b.cx));
+      line.setAttribute("y2", String(b.cy));
+      line.setAttribute("stroke", "currentColor");
+      line.setAttribute("stroke-opacity", "0.12");
+      line.setAttribute("stroke-dasharray", "4 4");
+      svg.appendChild(line);
+      addText(svg, ns, 4, a.cy + 4, h.label);
+    });
+
+    // Backness labels
+    var backs = [
+      { x: 0, label: "Front" },
+      { x: 0.5, label: "Central" },
+      { x: 1, label: "Back" },
+    ];
+    backs.forEach(function (b) {
+      var p = project(b.x, 0, W, H, pad);
+      addText(svg, ns, p.cx, pad.t - 4, b.label, { "text-anchor": "middle" });
+    });
+
+    // Vowel points
+    points.forEach(function (p) {
+      var pos = project(p.x, p.y, W, H, pad);
+      var g = document.createElementNS(ns, "g");
+      g.setAttribute("transform", "translate(" + pos.cx + "," + pos.cy + ")");
+
+      var dot = document.createElementNS(ns, "circle");
+      dot.setAttribute("r", p.rounded ? "5.5" : "5");
+      dot.setAttribute("fill", p.rounded ? "#7c3aed" : "none");
+      dot.setAttribute("stroke", "#7c3aed");
+      dot.setAttribute("stroke-width", p.rounded ? "0" : "2");
+      dot.setAttribute("opacity", "0.95");
+      g.appendChild(dot);
+
+      var label = document.createElementNS(ns, "text");
+      label.setAttribute("x", "9");
+      label.setAttribute("y", "4");
+      label.setAttribute("font-size", "13");
+      label.setAttribute("font-family", "ui-monospace, SFMono-Regular, Menlo, monospace");
+      label.setAttribute("fill", "currentColor");
+      label.textContent = p.ipa;
+      g.appendChild(label);
+
+      var title = document.createElementNS(ns, "title");
+      title.textContent = "/" + p.ipa + "/ · " + p.height + " " + p.backness + (p.rounded ? " rounded" : " unrounded");
+      g.appendChild(title);
+
+      svg.appendChild(g);
+    });
+
+    wrap.appendChild(svg);
+
+    var legend = document.createElement("div");
+    legend.className = "lc-vowel-legend lc-muted";
+    legend.innerHTML =
+      '<span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">' +
+      '<circle cx="7" cy="7" r="5" fill="none" stroke="#7c3aed" stroke-width="2"/></svg> unrounded</span>' +
+      '<span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">' +
+      '<circle cx="7" cy="7" r="5.5" fill="#7c3aed"/></svg> rounded</span>' +
+      '<span>' + points.length + " vowel" + (points.length === 1 ? "" : "s") + "</span>";
+    wrap.appendChild(legend);
+
+    var table = document.createElement("table");
+    table.className = "lc-vowel-table";
+    table.innerHTML =
+      "<thead><tr><th>IPA</th><th>Height</th><th>Backness</th><th>Rounded</th></tr></thead>";
+    var tbody = document.createElement("tbody");
+    points.forEach(function (p) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td><code>/" + esc(p.ipa) + "/</code></td>" +
+        "<td>" + esc(p.height) + "</td>" +
+        "<td>" + esc(p.backness) + "</td>" +
+        "<td>" + (p.rounded ? "Yes" : "No") + "</td>";
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+
+    if (unknown.length) {
+      var warn = document.createElement("p");
+      warn.className = "lc-muted";
+      warn.style.marginTop = "8px";
+      warn.textContent = "Not plotted (unknown vowel symbols): " + unknown.join(", ");
+      wrap.appendChild(warn);
     }
-    const cap = document.createElement("p");
-    cap.className = "lc-muted";
-    cap.style.marginTop = "8px";
-    cap.textContent = points.length + " vowel" + (points.length === 1 ? "" : "s") + " plotted (front → back, close → open).";
-    root.appendChild(svg);
-    root.appendChild(cap);
+
+    root.appendChild(wrap);
     host.reportHeight();
   } catch (e) {
-    root.innerHTML = '<p class="lc-muted">Could not load phonology.</p>';
+    root.innerHTML = '<p class="lc-muted">Could not load phonology data.</p>';
     host.reportHeight();
   }
 });

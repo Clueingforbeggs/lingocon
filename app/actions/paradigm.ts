@@ -3,7 +3,7 @@
 import { ZodError } from "zod"
 import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
-import { getUserId, canEditLanguage } from "@/lib/auth-helpers"
+import { getUserId, canEditScope } from "@/lib/auth-helpers"
 import {
   createParadigmSchema,
   updateParadigmSchema,
@@ -24,7 +24,7 @@ export async function createParadigm(input: CreateParadigmInput) {
     const validated = createParadigmSchema.parse(input)
 
     // Verify edit permission (owner or editor)
-    const canEdit = await canEditLanguage(validated.languageId, userId)
+    const canEdit = await canEditScope(validated.languageId, userId, "write:paradigms")
     if (!canEdit) {
       return {
         error: "Unauthorized - You don't have permission to edit this language",
@@ -93,7 +93,7 @@ export async function updateParadigm(input: UpdateParadigmInput) {
     }
 
     // Verify edit permission (owner or editor)
-    const canEdit = await canEditLanguage(paradigm.languageId, userId)
+    const canEdit = await canEditScope(paradigm.languageId, userId, "write:paradigms")
     if (!canEdit) {
       return {
         error: "Unauthorized - You don't have permission to edit this language",
@@ -145,7 +145,7 @@ export async function deleteParadigm(paradigmId: string, languageId: string) {
 
   try {
     // Verify edit permission (owner or editor)
-    const canEdit = await canEditLanguage(languageId, userId)
+    const canEdit = await canEditScope(languageId, userId, "write:paradigms")
     if (!canEdit) {
       return {
         error: "Unauthorized - You don't have permission to edit this language",
@@ -183,7 +183,7 @@ export async function cloneParadigm(paradigmId: string, languageId: string) {
   const userId = await getUserId()
   if (!userId) return { error: "Unauthorized" }
 
-  const canEdit = await canEditLanguage(languageId, userId)
+  const canEdit = await canEditScope(languageId, userId, "write:paradigms")
   if (!canEdit) return { error: "Unauthorized" }
 
   try {

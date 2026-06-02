@@ -24,11 +24,11 @@ async function getArticle(languageSlug: string, articleSlug: string, userId: str
 
   // Allow access if user is owner or collaborator (skip in dev mode)
   if (process.env.DEV_MODE !== "true" && userId) {
-    const { canEditLanguage } = await import("@/lib/auth-helpers")
-    const canEdit = await canEditLanguage(language.id, userId)
-    if (!canEdit) {
-      return { language, article: null }
-    }
+    const { canEditScope } = await import("@/lib/auth-helpers")
+    const canEdit =
+      (await canEditScope(language.id, userId, "write:articles")) ||
+      (await canEditScope(language.id, userId, "draft:articles"))
+    if (!canEdit) return { language, article: null }
   }
 
   const article = await prisma.article.findUnique({

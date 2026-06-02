@@ -70,6 +70,20 @@ export async function updateArticle(
   }
 }
 
+export async function publishArticle(id: string) {
+  const userId = await getUserId()
+  if (!userId) return { error: "Unauthorized" }
+
+  try {
+    const result = await articleService.publishArticle(id, userId)
+    revalidateArticlePaths(result.langSlug, result.article.slug)
+    checkContentBadges(userId).catch(console.error)
+    return { article: result.article }
+  } catch (error) {
+    return handleError(error, "Failed to publish article")
+  }
+}
+
 export async function deleteArticle(id: string) {
   const userId = await getUserId()
   if (!userId) return { error: "Unauthorized" }

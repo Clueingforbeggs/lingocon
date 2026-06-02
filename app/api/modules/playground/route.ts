@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getUserId, canEditLanguage } from "@/lib/auth-helpers"
+import { getUserId, canEditScope } from "@/lib/auth-helpers"
 import { isRuntimeMethod } from "@/lib/modules/runtime-protocol"
 import { loadModuleData } from "@/lib/modules/data"
 
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   }
 
   const userId = await getUserId()
-  if (!(await canEditLanguage(languageId, userId))) {
+  if (!(await canEditScope(languageId, userId, "manage:modules"))) {
     return NextResponse.json({ error: "You can only test against your own languages" }, { status: 403 })
   }
 

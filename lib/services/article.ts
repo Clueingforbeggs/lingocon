@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { canEditLanguage } from "@/lib/auth-helpers"
+import { canEditScope } from "@/lib/auth-helpers"
 import { UnauthorizedError, NotFoundError } from "@/lib/errors"
 
 function generateSlug(title: string): string {
@@ -45,8 +45,10 @@ export async function createArticle(
   },
   userId: string
 ) {
-  const canEdit = await canEditLanguage(data.languageId, userId)
-  if (!canEdit) {
+  const canWrite = await canEditScope(data.languageId, userId, "write:articles")
+  const canDraft = !canWrite && await canEditScope(data.languageId, userId, "draft:articles")
+
+  if (!canWrite && !canDraft) {
     throw new UnauthorizedError("You don't have permission to add articles to this language")
   }
 
@@ -59,6 +61,9 @@ export async function createArticle(
 
   const slug = await ensureUniqueSlug(data.languageId, generateSlug(data.title))
 
+  // Draft contributors always save as unpublished; writers respect the param.
+  const published = canWrite ? (data.published ?? true) : false
+
   const article = await prisma.article.create({
     data: {
       title: data.title,
@@ -66,8 +71,8 @@ export async function createArticle(
       excerpt: data.excerpt,
       content: data.content,
       coverImage: data.coverImage,
-      published: true,
-      publishedAt: new Date(),
+      published,
+      publishedAt: published ? new Date() : null,
       paradigmId: data.paradigmId || null,
       languageId: data.languageId,
       authorId: userId,
@@ -98,8 +103,16 @@ export async function updateArticle(
     throw new NotFoundError("Article", id)
   }
 
-  const canEdit = await canEditLanguage(article.language.id, userId)
-  if (!canEdit) {
+  const canWrite = await canEditScope(article.language.id, userId, "write:articles")
+
+  // Draft contributors can edit their own unpublished articles only
+  const isDraftAuthor =
+    !canWrite &&
+    article.authorId === userId &&
+    !article.published &&
+    (await canEditScope(article.language.id, userId, "draft:articles"))
+
+  if (!canWrite && !isDraftAuthor) {
     throw new UnauthorizedError("You don't have permission to edit this article")
   }
 
@@ -108,15 +121,39 @@ export async function updateArticle(
     slug = await ensureUniqueSlug(article.languageId, generateSlug(data.title), id)
   }
 
+  // Draft contributors cannot change published state
+  const publishedNext = canWrite
+    ? (data.published ?? article.published)
+    : article.published
+
   const updated = await prisma.article.update({
     where: { id },
     data: {
       ...data,
       slug,
       paradigmId: data.paradigmId !== undefined ? data.paradigmId || null : article.paradigmId,
-      published: true,
-      publishedAt: !article.published ? new Date() : article.publishedAt,
+      published: publishedNext,
+      publishedAt: publishedNext && !article.published ? new Date() : article.publishedAt,
     },
+  })
+
+  return { article: updated, langSlug: article.language.slug }
+}
+
+export async function publishArticle(id: string, userId: string) {
+  const article = await prisma.article.findUnique({
+    where: { id },
+    include: { language: { select: { id: true, slug: true } } },
+  })
+
+  if (!article) throw new NotFoundError("Article", id)
+
+  const canWrite = await canEditScope(article.language.id, userId, "write:articles")
+  if (!canWrite) throw new UnauthorizedError("You don't have permission to publish articles")
+
+  const updated = await prisma.article.update({
+    where: { id },
+    data: { published: true, publishedAt: article.publishedAt ?? new Date() },
   })
 
   return { article: updated, langSlug: article.language.slug }
@@ -132,12 +169,43 @@ export async function deleteArticle(id: string, userId: string) {
     throw new NotFoundError("Article", id)
   }
 
-  const canEdit = await canEditLanguage(article.language.id, userId)
-  if (!canEdit) {
+  const canWrite = await canEditScope(article.language.id, userId, "write:articles")
+
+  // Draft contributors can delete their own unpublished articles
+  const isDraftAuthor =
+    !canWrite &&
+    article.authorId === userId &&
+    !article.published &&
+    (await canEditScope(article.language.id, userId, "draft:articles"))
+
+  if (!canWrite && !isDraftAuthor) {
     throw new UnauthorizedError("You don't have permission to delete this article")
   }
 
   await prisma.article.delete({ where: { id } })
 
   return { langSlug: article.language.slug, articleSlug: article.slug }
+}
+
+export async function getDraftArticles(languageId: string, userId: string) {
+  const canWrite = await canEditScope(languageId, userId, "write:articles")
+
+  if (canWrite) {
+    // Reviewers see all pending drafts (exclude their own so the list focuses on community submissions)
+    return prisma.article.findMany({
+      where: { languageId, published: false, authorId: { not: userId } },
+      include: { author: { select: { id: true, name: true, image: true } } },
+      orderBy: { createdAt: "asc" },
+    })
+  }
+
+  const canDraft = await canEditScope(languageId, userId, "draft:articles")
+  if (!canDraft) return []
+
+  // Contributors see only their own drafts
+  return prisma.article.findMany({
+    where: { languageId, published: false, authorId: userId },
+    include: { author: { select: { id: true, name: true, image: true } } },
+    orderBy: { createdAt: "desc" },
+  })
 }

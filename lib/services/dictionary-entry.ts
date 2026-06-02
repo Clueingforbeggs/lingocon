@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { canEditLanguage } from "@/lib/auth-helpers"
+import { canEditScope } from "@/lib/auth-helpers"
 import { UnauthorizedError, NotFoundError, ValidationError } from "@/lib/errors"
 import {
   createDictionaryEntrySchema,
@@ -14,7 +14,7 @@ export async function createEntry(input: CreateDictionaryEntryInput, userId: str
   const sterilized = JSON.parse(JSON.stringify(input))
   const validated = createDictionaryEntrySchema.parse(sterilized)
 
-  const canEdit = await canEditLanguage(validated.languageId, userId)
+  const canEdit = await canEditScope(validated.languageId, userId, "write:dictionary")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -59,7 +59,7 @@ export async function updateEntry(input: UpdateDictionaryEntryInput, userId: str
   const sterilized = JSON.parse(JSON.stringify(input))
   const validated = updateDictionaryEntrySchema.parse(sterilized)
 
-  const canEdit = await canEditLanguage(validated.languageId, userId)
+  const canEdit = await canEditScope(validated.languageId, userId, "write:dictionary")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -114,7 +114,7 @@ export async function bulkUpdateEntries(
     languageId,
   })
 
-  const canEdit = await canEditLanguage(validated.languageId, userId)
+  const canEdit = await canEditScope(validated.languageId, userId, "write:dictionary")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -153,7 +153,7 @@ export async function bulkUpdateEntries(
 }
 
 export async function deleteEntry(entryId: string, languageId: string, userId: string) {
-  const canEdit = await canEditLanguage(languageId, userId)
+  const canEdit = await canEditScope(languageId, userId, "write:dictionary")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -196,7 +196,7 @@ export async function bulkDeleteEntries(entryIds: string[], languageId: string, 
     throw new ValidationError("No entries selected")
   }
 
-  const canEdit = await canEditLanguage(languageId, userId)
+  const canEdit = await canEditScope(languageId, userId, "write:dictionary")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }
@@ -258,7 +258,7 @@ export async function deleteAllEntries(languageId: string, userId: string) {
     throw new ValidationError("Language ID is required")
   }
 
-  const canEdit = await canEditLanguage(languageId, userId)
+  const canEdit = await canEditScope(languageId, userId, "write:dictionary")
   if (!canEdit) {
     throw new UnauthorizedError("You don't have permission to edit this language")
   }

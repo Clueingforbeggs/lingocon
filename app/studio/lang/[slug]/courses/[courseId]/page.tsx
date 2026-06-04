@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, GraduationCap, Plus, ListChecks, BookOpen, Settings } from "lucide-react"
 import { Navbar } from "@/components/navbar"
+import { Footer } from "@/components/footer"
 import { CourseEditor } from "./course-editor"
 
 export const dynamic = "force-dynamic"
@@ -114,6 +115,7 @@ export default async function CourseEditorPage({
           slug={slug}
         />
       </main>
+      <Footer />
     </div>
   )
 }

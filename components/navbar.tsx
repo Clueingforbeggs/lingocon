@@ -41,6 +41,7 @@ import { useState } from "react"
 import { NotificationCenter } from "@/components/notification-center"
 import { InstallPWA } from "@/components/install-pwa"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { LanguageSwitcher } from "@/components/language-switcher"
 
 interface NavbarProps {
   user?: {
@@ -124,6 +125,9 @@ export function Navbar({ user, isDevMode = false }: NavbarProps) {
 
           {/* Install PWA */}
           <InstallPWA />
+
+          {/* Language Switcher */}
+          <LanguageSwitcher />
 
           {/* Theme toggle */}
           <ThemeToggle />

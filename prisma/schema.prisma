@@ -56,6 +56,10 @@ model User {
   moduleReviews  ModuleReview[]
   moduleReports  ModuleReport[]
   extensionTokens ExtensionToken[]
+  enrollments       Enrollment[]
+  xpEvents          XPEvent[]
+  courses           Course[]
+  lessonCompletions LessonCompletion[]
 
   @@map("users")
 }
@@ -153,6 +157,9 @@ model Language {
   comments        Comment[]
   slugReservations SlugReservation[]
   moduleInstalls  ModuleInstall[]
+  enrollments     Enrollment[]
+  courses         Course[]
+  uiTranslations  ConlangTranslation[]
 
   @@index([ownerId])
   @@index([slug])
@@ -272,8 +279,9 @@ model GrammarPage {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
-  paradigm Paradigm? @relation(fields: [paradigmId], references: [id], onDelete: SetNull)
+  language    Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  paradigm    Paradigm? @relation(fields: [paradigmId], references: [id], onDelete: SetNull)
+  lessonItems LessonItem[]
 
   @@unique([languageId, slug])
   @@index([languageId])
@@ -310,6 +318,7 @@ model DictionaryEntry {
   language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
   paradigm Paradigm? @relation(fields: [paradigmId], references: [id], onDelete: SetNull)
   exampleSentences ExampleSentence[]
+  lessonItems      LessonItem[]
 
   @@index([languageId])
   @@index([languageId, lemma])
@@ -329,7 +338,8 @@ model ExampleSentence {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  entry DictionaryEntry @relation(fields: [dictionaryEntryId], references: [id], onDelete: Cascade)
+  entry       DictionaryEntry @relation(fields: [dictionaryEntryId], references: [id], onDelete: Cascade)
+  lessonItems LessonItem[]
 
   @@index([dictionaryEntryId])
   @@map("example_sentences")
@@ -449,9 +459,10 @@ model Text {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
-  author   User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  paradigm Paradigm? @relation(fields: [paradigmId], references: [id], onDelete: SetNull)
+  language    Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  paradigm    Paradigm? @relation(fields: [paradigmId], references: [id], onDelete: SetNull)
+  lessonItems LessonItem[]
 
   @@unique([languageId, slug])
   @@index([languageId])
@@ -866,4 +877,235 @@ model ExtensionToken {
   @@index([userId])
   @@index([tokenHash])
   @@map("extension_tokens")
+}
+
+// ─── Learning Platform ────────────────────────────────────────────────────────
+
+enum CourseVisibility {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LessonItemType {
+  VOCAB
+  GRAMMAR
+  TEXT
+  SENTENCE
+}
+
+enum CardType {
+  VOCAB_RECOGNITION
+  VOCAB_PRODUCTION
+  CLOZE
+  GRAMMAR_READ
+}
+
+enum CardState {
+  NEW
+  LEARNING
+  REVIEW
+  RELEARNING
+}
+
+enum ReviewRating {
+  AGAIN
+  HARD
+  GOOD
+  EASY
+}
+
+// Creator-authored course for a language
+model Course {
+  id          String           @id @default(cuid())
+  title       String
+  description String?          @db.Text
+  coverImage  String?
+  visibility  CourseVisibility @default(DRAFT)
+  order       Int              @default(0)
+  languageId  String
+  authorId    String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  language    Language         @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  author      User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  lessons     CourseLesson[]
+  enrollments Enrollment[]
+
+  @@index([languageId])
+  @@index([authorId])
+  @@index([languageId, visibility])
+  @@map("courses")
+}
+
+model CourseLesson {
+  id          String       @id @default(cuid())
+  title       String
+  description String?      @db.Text
+  order       Int          @default(0)
+  courseId    String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  course      Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  items       LessonItem[]
+  studyCards  StudyCard[]
+  completions LessonCompletion[]
+
+  @@index([courseId])
+  @@index([courseId, order])
+  @@map("course_lessons")
+}
+
+// Items within a lesson — each links to one content source
+model LessonItem {
+  id            String          @id @default(cuid())
+  lessonId      String
+  type          LessonItemType
+  order         Int             @default(0)
+  dictEntryId   String?
+  grammarPageId String?
+  textId        String?
+  sentenceId    String?
+  createdAt     DateTime        @default(now())
+
+  lesson      CourseLesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  dictEntry   DictionaryEntry?  @relation(fields: [dictEntryId], references: [id], onDelete: Cascade)
+  grammarPage GrammarPage?      @relation(fields: [grammarPageId], references: [id], onDelete: SetNull)
+  text        Text?             @relation(fields: [textId], references: [id], onDelete: SetNull)
+  sentence    ExampleSentence?  @relation(fields: [sentenceId], references: [id], onDelete: SetNull)
+
+  @@index([lessonId])
+  @@index([dictEntryId])
+  @@index([grammarPageId])
+  @@index([textId])
+  @@map("lesson_items")
+}
+
+// User enrolled to learn a language
+model Enrollment {
+  id          String    @id @default(cuid())
+  userId      String
+  languageId  String
+  courseId    String?
+  xp          Int       @default(0)
+  streak      Int       @default(0)
+  lastStudied DateTime?
+  enrolledAt  DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language    Language    @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  course      Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  studyCards  StudyCard[]
+
+  @@unique([userId, languageId])
+  @@index([userId])
+  @@index([languageId])
+  @@map("enrollments")
+}
+
+// FSRS card — one per learnable item per enrolled user
+model StudyCard {
+  id            String    @id @default(cuid())
+  enrollmentId  String
+  lessonId      String?
+  // Source — one set based on cardType
+  dictEntryId   String?
+  grammarPageId String?
+  textId        String?
+  sentenceId    String?
+
+  cardType      CardType
+  front         String    @db.Text
+  back          String    @db.Text
+
+  // FSRS scheduling state (ts-fsrs compatible)
+  due           DateTime  @default(now())
+  stability     Float     @default(0)
+  difficulty    Float     @default(5)
+  elapsedDays   Int       @default(0)
+  scheduledDays Int       @default(0)
+  reps          Int       @default(0)
+  lapses        Int       @default(0)
+  state         CardState @default(NEW)
+  lastReview    DateTime?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  enrollment    Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson        CourseLesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  reviews       CardReview[]
+
+  @@index([enrollmentId])
+  @@index([enrollmentId, due])
+  @@index([enrollmentId, state])
+  @@index([lessonId])
+  @@map("study_cards")
+}
+
+model CardReview {
+  id         String       @id @default(cuid())
+  cardId     String
+  rating     ReviewRating
+  timeTaken  Int          // milliseconds — used for 4-second rule
+  xpEarned   Int
+  reviewedAt DateTime     @default(now())
+
+  card       StudyCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
+  @@index([cardId, reviewedAt])
+  @@map("card_reviews")
+}
+
+model XPEvent {
+  id         String   @id @default(cuid())
+  userId     String
+  languageId String
+  amount     Int
+  reason     String   // 'review', 'lesson_complete', 'streak_bonus', 'perfect_session'
+  createdAt  DateTime @default(now())
+
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, languageId])
+  @@index([userId, createdAt])
+  @@map("xp_events")
+}
+
+// UI translations contributed by conlang creators
+model ConlangTranslation {
+  id          String   @id @default(cuid())
+  languageId  String
+  key         String   // Dot-notated key, e.g. "nav.home"
+  value       String   @db.Text // Translated string
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([languageId, key])
+  @@index([languageId])
+  @@map("conlang_translations")
+}
+
+// Tracks which lessons a user has completed and the XP/hearts earned
+model LessonCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonId    String
+  xpEarned    Int
+  heartsLeft  Int      @default(0)
+  completedAt DateTime @default(now())
+
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@map("lesson_completions")
 }

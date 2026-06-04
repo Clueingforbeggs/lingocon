@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Languages, Github, Heart } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 const DiscordIcon = ({ className }: { className?: string }) => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" className={className}>
@@ -7,27 +8,29 @@ const DiscordIcon = ({ className }: { className?: string }) => (
     </svg>
 )
 
-const productLinks = [
-    { name: "Dashboard", href: "/dashboard" },
-    { name: "Browse Languages", href: "/browse" },
-    { name: "Language Families", href: "/families" },
-    { name: "Search", href: "/search" },
-]
-
-const communityLinks = [
-    { name: "Discord", href: "https://discord.gg/EaVRggatDQ", external: true },
-    { name: "Contribute", href: "/contributions" },
-    { name: "Community Survey", href: "/survey" },
-    { name: "Developer Docs", href: "/docs" },
-]
-
-const legalLinks = [
-    { name: "Contact", href: "/contact" },
-    { name: "Donate", href: "/donate" },
-    { name: "GitHub", href: "https://github.com/alexcircuits/lingocon", external: true },
-]
-
 export function Footer() {
+    const t = useTranslations("footer");
+
+    const productLinks = [
+        { name: t("dashboard"), href: "/dashboard" },
+        { name: t("browseLanguages"), href: "/browse" },
+        { name: t("languageFamilies"), href: "/families" },
+        { name: "Search", href: "/search" },
+    ]
+
+    const communityLinks = [
+        { name: t("discord"), href: "https://discord.gg/EaVRggatDQ", external: true },
+        { name: t("contribute"), href: "/contributions" },
+        { name: t("communitySurvey"), href: "/survey" },
+        { name: t("developerDocs"), href: "/docs" },
+    ]
+
+    const legalLinks = [
+        { name: t("contact"), href: "/contact" },
+        { name: t("donate"), href: "/donate" },
+        { name: t("github"), href: "https://github.com/alexcircuits/lingocon", external: true },
+    ]
+
     return (
         <footer className="border-t border-border/40 bg-foreground text-background relative overflow-hidden mt-auto">
             {/* Decorative glyph pattern */}
@@ -49,8 +52,7 @@ export function Footer() {
                             <span className="font-bold text-lg tracking-tight">LingoCon</span>
                         </div>
                         <p className="text-sm text-background/60 leading-relaxed mb-6 max-w-xs">
-                            The professional toolkit for language construction. 
-                            Free, open-source, and built by conlangers, for conlangers.
+                            {t("tagline")}
                         </p>
                         <div className="flex items-center gap-3">
                             <Link
@@ -82,7 +84,7 @@ export function Footer() {
 
                     {/* Product Links */}
                     <div>
-                        <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-background/40 mb-4">Product</h4>
+                        <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-background/40 mb-4">{t("product")}</h4>
                         <nav className="flex flex-col gap-2.5">
                             {productLinks.map(link => (
                                 <Link
@@ -98,7 +100,7 @@ export function Footer() {
 
                     {/* Community Links */}
                     <div>
-                        <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-background/40 mb-4">Community</h4>
+                        <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-background/40 mb-4">{t("community")}</h4>
                         <nav className="flex flex-col gap-2.5">
                             {communityLinks.map(link => (
                                 <Link
@@ -115,7 +117,7 @@ export function Footer() {
 
                     {/* Info & Support */}
                     <div>
-                        <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-background/40 mb-4">Support</h4>
+                        <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-background/40 mb-4">{t("support")}</h4>
                         <nav className="flex flex-col gap-2.5">
                             {legalLinks.map(link => (
                                 <Link
@@ -134,10 +136,10 @@ export function Footer() {
                 {/* Bottom bar */}
                 <div className="pt-8 border-t border-background/10 flex flex-col md:flex-row items-center justify-between gap-4">
                     <p className="text-xs text-background/40">
-                        © {new Date().getFullYear()} LingoCon · v2.0 Public Beta
+                        {t("copyright", { year: new Date().getFullYear() })}
                     </p>
-                    <p className="text-xs text-background/40 italic">
-                        Made with intellectual curiosity and <Heart className="h-3 w-3 inline fill-rose-400 text-rose-400 mx-0.5" /> for the art of language creation
+                    <p className="text-xs text-background/40 italic flex items-center flex-wrap justify-center">
+                        {t("madeWith")} <Heart className="h-3 w-3 inline fill-rose-400 text-rose-400 mx-1" />
                     </p>
                 </div>
             </div>

@@ -10,6 +10,12 @@ import { DEV_MODE_USER_DISPLAY_NAME, DEV_MODE_USER_EMAIL } from "@/lib/constants
 let devUserId: string | null = null
 
 export async function getDevUserId(): Promise<string> {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "getDevUserId must never be called in production. Remove the DEV_MODE environment variable."
+    )
+  }
+
   if (devUserId) {
     return devUserId
   }

@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { unstable_cache } from "next/cache"
+import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/prisma"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -261,6 +262,7 @@ const DiscordIcon = ({ className }: { className?: string }) => (
 )
 
 export default async function Home() {
+  const t = await getTranslations("landing");
   const session = await auth()
   const isDevMode = process.env.DEV_MODE === "true"
   const [featuredLanguages, topLanguages, universeLanguages, stats] = await Promise.all([
@@ -294,28 +296,27 @@ export default async function Home() {
           <div className="flex justify-center animate-in fade-in slide-in-from-bottom-4 duration-700">
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-4 py-1.5 text-sm font-medium text-muted-foreground backdrop-blur-md">
               <Sparkles className="h-4 w-4 text-primary" />
-              Open source · No paywalls · Built by conlangers
+              {t("eyebrow")}
             </span>
           </div>
 
           {/* Headline */}
           <h1 className="mx-auto mt-8 max-w-5xl text-center text-5xl font-extrabold leading-[0.95] tracking-tight sm:text-6xl md:text-7xl lg:text-[5.5rem] animate-in fade-in slide-in-from-bottom-4 duration-700">
-            Invent a language.
+            {t("headline")}
             <br />
-            <span className="aurora-gradient-text">Document a world.</span>
+            <span className="aurora-gradient-text">{t("headlineAccent")}</span>
           </h1>
 
           {/* Subhead */}
           <p className="mx-auto mt-7 max-w-2xl text-center text-lg text-muted-foreground sm:text-xl md:text-2xl animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150">
-            The all-in-one studio for constructed languages — phonology, lexicon, grammar,
-            custom scripts and paradigm tables. Try the real editor right here, no signup.
+            {t("subhead")}
           </p>
 
           {/* CTAs */}
           <div className="mx-auto mt-9 flex w-full max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:items-center sm:justify-center sm:gap-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
             <Link href={isAuthenticated ? "/dashboard" : "/login"} className="block w-full sm:w-auto">
               <MagneticButton className="h-14 w-full rounded-full bg-gradient-to-r from-primary to-[hsl(var(--aurora-blue))] px-8 text-base font-semibold text-primary-foreground shadow-xl shadow-primary/25 transition-all hover:scale-105 sm:w-auto">
-                {isAuthenticated ? "Go to Dashboard" : "Start building free"}
+                {isAuthenticated ? t("ctaDashboard") : t("ctaPrimary")}
                 <ArrowRight className="ml-2 h-5 w-5 pointer-events-none" />
               </MagneticButton>
             </Link>
@@ -325,7 +326,7 @@ export default async function Home() {
                 className="h-14 w-full rounded-full border-2 border-border bg-card/50 px-8 text-base font-semibold backdrop-blur-md transition-all hover:border-primary/40 sm:w-auto"
               >
                 <Globe className="mr-2 h-5 w-5 pointer-events-none" />
-                Explore the Universe
+                {t("ctaExplore")}
               </MagneticButton>
             </Link>
           </div>
@@ -345,14 +346,14 @@ export default async function Home() {
               <StudioDemo />
             </div>
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              ↑ This is the actual editor. Add words, reorder your alphabet, switch tools — it&apos;s live.
+              {t("editorNote")}
             </p>
           </div>
 
           {/* Trending stripe */}
           <div className="mt-20 border-t border-border/50 pt-12">
             <p className="mb-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-              Trending in the corpus
+              {t("trendingLabel")}
             </p>
             <TopLanguagesStripe languages={topLanguages} />
           </div>

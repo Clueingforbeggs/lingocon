@@ -10,7 +10,8 @@ import {
   LayoutDashboard,
   Newspaper,
   BookMarked,
-  Table2
+  Table2,
+  GraduationCap,
 } from "lucide-react"
 import { Navbar } from "@/components/navbar"
 import { Breadcrumbs } from "@/components/breadcrumbs"
@@ -47,6 +48,7 @@ export function PublicLayout({ language, children, user, isDevMode }: PublicLayo
     { name: "Paradigms", href: `${basePath}/paradigms`, icon: Table2 },
     { name: "Articles", href: `${basePath}/articles`, icon: Newspaper },
     { name: "Texts", href: `${basePath}/texts`, icon: BookMarked },
+    { name: "Learn", href: `/learn/${language.slug}`, icon: GraduationCap },
   ]
 
   const breadcrumbItems = [

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, RefreshCw, Home } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 export default function Error({
   error,
@@ -13,6 +14,9 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const t = useTranslations("errors");
+  const tCommon = useTranslations("common");
+
   useEffect(() => {
     console.error(error)
   }, [error])
@@ -27,9 +31,9 @@ export default function Error({
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-destructive/10">
             <AlertCircle className="h-7 w-7 text-destructive" />
           </div>
-          <CardTitle className="text-xl">Something went wrong</CardTitle>
+          <CardTitle className="text-xl">{t("somethingWrong")}</CardTitle>
           <CardDescription className="text-sm">
-            An unexpected error occurred
+            {t("unexpectedError")}
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-2 pb-6 space-y-4">
@@ -41,12 +45,12 @@ export default function Error({
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <Button onClick={reset} variant="outline" size="sm">
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-              Try Again
+              {tCommon("tryAgain")}
             </Button>
             <Link href="/">
               <Button size="sm" className="w-full sm:w-auto glow-primary">
                 <Home className="mr-1.5 h-3.5 w-3.5" />
-                Go Home
+                {tCommon("goHome")}
               </Button>
             </Link>
           </div>

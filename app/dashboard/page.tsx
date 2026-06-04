@@ -18,6 +18,7 @@ import { BadgeProgress } from "@/components/badges"
 import { cn } from "@/lib/utils"
 import { DashboardTour } from "@/components/onboarding/dashboard-tour"
 import { SupportWidget } from "@/components/support-widget"
+import { getTranslations } from "next-intl/server"
 
 
 export const metadata = {
@@ -31,11 +32,11 @@ export const metadata = {
 export const dynamic = "force-dynamic"
 
 
-function getGreeting(): string {
+function getGreetingKey(): "morning" | "afternoon" | "evening" {
   const hour = new Date().getHours()
-  if (hour < 12) return "Good morning"
-  if (hour < 18) return "Good afternoon"
-  return "Good evening"
+  if (hour < 12) return "morning"
+  if (hour < 18) return "afternoon"
+  return "evening"
 }
 
 async function getLanguages(userId: string) {
@@ -61,14 +62,10 @@ async function getLanguages(userId: string) {
   })
 }
 
-const statCards = [
-  { key: "totalLanguages", label: "Languages", icon: Languages },
-  { key: "totalSymbols", label: "Script Symbols", icon: Type },
-  { key: "totalPages", label: "Grammar Pages", icon: BookOpen },
-  { key: "totalEntries", label: "Dictionary Entries", icon: Library },
-] as const
+
 
 export default async function DashboardPage() {
+  const t = await getTranslations("dashboard")
   const session = await auth()
 
   if (!session?.user?.id && process.env.DEV_MODE !== "true") {
@@ -83,6 +80,13 @@ export default async function DashboardPage() {
     totalPages: languages.reduce((sum, lang) => sum + lang._count.grammarPages, 0),
     totalEntries: languages.reduce((sum, lang) => sum + lang._count.dictionaryEntries, 0),
   }
+
+  const statCards = [
+    { key: "totalLanguages", label: t("languages"), icon: Languages },
+    { key: "totalSymbols", label: t("scriptSymbols"), icon: Type },
+    { key: "totalPages", label: t("grammarPages"), icon: BookOpen },
+    { key: "totalEntries", label: t("dictionaryEntries"), icon: Library },
+  ] as const
   const activities = userId ? await getRecentActivitiesForUserLanguages(userId, 10) : []
   const nextBadges = userId ? await getNextBadges(userId) : []
 
@@ -101,7 +105,7 @@ export default async function DashboardPage() {
     isAdmin: dbUser?.isAdmin || false,
   } : null
 
-  const greeting = getGreeting()
+  const greetingKey = getGreetingKey()
   const userName = user?.name?.split(" ")[0] || "there"
   const mostRecent = languages[0]
 
@@ -120,21 +124,21 @@ export default async function DashboardPage() {
           <div className="pointer-events-none absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-accent/10 blur-3xl" />
           <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-muted-foreground">{greeting},</p>
+              <p className="text-sm font-medium text-muted-foreground">{t(`greeting.${greetingKey}`)},</p>
               <h1 className="mt-0.5 text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl">
                 {userName}
               </h1>
               <p className="mt-3 max-w-md text-muted-foreground">
                 {languages.length === 0
-                  ? "Ready to start building your first constructed language?"
-                  : `You have ${languages.length} ${languages.length === 1 ? "language" : "languages"} in your workspace.`}
+                  ? t("emptyPrompt")
+                  : t("languageCount", { count: languages.length })}
               </p>
               {mostRecent && (
                 <Link
                   href={`/studio/lang/${mostRecent.slug}`}
                   className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-all hover:gap-2.5"
                 >
-                  Continue editing {mostRecent.name}
+                  {t("continueEditing", { name: mostRecent.name })}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               )}
@@ -144,7 +148,7 @@ export default async function DashboardPage() {
               <Link href="/dashboard/new-language" className="w-full sm:w-auto">
                 <Button size="lg" className="w-full gap-2 sm:w-auto">
                   <Plus className="h-4 w-4" />
-                  New Language
+                  {t("newLanguage")}
                 </Button>
               </Link>
             </div>
@@ -188,17 +192,17 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight">
                 <Languages className="h-4 w-4 text-primary" />
-                Your Languages
+                {t("yourLanguages")}
               </h2>
               <div className="flex items-center gap-4">
                 {languages.length > 1 && (
                   <Link href="/dashboard/families" className="text-sm text-muted-foreground transition-colors hover:text-primary">
-                    Family tree →
+                    {t("familyTreeLink")}
                   </Link>
                 )}
                 {languages.length > 0 && (
                   <Link href="/browse" className="text-sm text-muted-foreground transition-colors hover:text-primary">
-                    Browse all →
+                    {t("browseAll")}
                   </Link>
                 )}
               </div>
@@ -210,16 +214,16 @@ export default async function DashboardPage() {
                   <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                     <Sparkles className="h-5 w-5 text-primary" />
                   </div>
-                  <CardTitle className="text-lg font-bold">Start your first language</CardTitle>
+                  <CardTitle className="text-lg font-bold">{t("startFirst")}</CardTitle>
                   <CardDescription className="mx-auto mt-2 max-w-xs">
-                    Create a structured home for your conlang with dictionary, grammar wiki, and more.
+                    {t("startFirstDesc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center pb-12">
                   <Link href="/dashboard/new-language">
                     <Button>
                       <Plus className="mr-2 h-4 w-4" />
-                      Create Language
+                      {t("newLanguage")}
                     </Button>
                   </Link>
                 </CardContent>
@@ -238,10 +242,10 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight">
                 <Calendar className="h-4 w-4 text-primary" />
-                Recent Activity
+                {t("recentActivity")}
               </h2>
               <Link href="/dashboard/feed" className="text-sm text-muted-foreground transition-colors hover:text-primary">
-                View feed →
+                {t("viewFeed")}
               </Link>
             </div>
             <div className="min-h-[200px] rounded-2xl border border-border/50 bg-card p-4 lg:min-h-[280px]">
@@ -250,8 +254,8 @@ export default async function DashboardPage() {
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                   <Calendar className="mb-3 h-8 w-8 opacity-30" />
-                  <p className="text-sm font-medium">No activity yet</p>
-                  <p className="mt-1 text-xs">Your changes will appear here</p>
+                  <p className="text-sm font-medium">{t("noActivity")}</p>
+                  <p className="mt-1 text-xs">{t("noActivityHint")}</p>
                 </div>
               )}
             </div>
@@ -267,7 +271,7 @@ export default async function DashboardPage() {
                     href={`/users/${userId}?tab=badges`}
                     className="text-xs text-muted-foreground transition-colors hover:text-primary"
                   >
-                    View all achievements
+                    {t("viewAchievements")}
                   </Link>
                 </div>
               </div>

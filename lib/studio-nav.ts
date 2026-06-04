@@ -9,8 +9,11 @@ import {
     Newspaper,
     BookMarked,
     GraduationCap,
+    ListChecks,
     Blocks,
     Settings,
+    Puzzle,
+    Globe,
 } from "lucide-react"
 import type { ComponentType } from "react"
 
@@ -34,7 +37,9 @@ export const STUDIO_TABS: StudioTab[] = [
     { name: "Paradigms", segment: "paradigms", icon: Table2 },
     { name: "Articles", segment: "articles", icon: Newspaper },
     { name: "Texts", segment: "texts", icon: BookMarked },
+    { name: "Courses", segment: "courses", icon: ListChecks },
     { name: "Flashcards", segment: "flashcards", icon: GraduationCap },
+    { name: "Translate", segment: "translate", icon: Globe },
     { name: "Modules", segment: "modules", icon: Blocks },
     { name: "Settings", segment: "settings", icon: Settings },
 ]

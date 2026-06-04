@@ -16,6 +16,8 @@ import { Loader2, ArrowLeft, User, Mail, Shield, Bell, Trash2 } from "lucide-rea
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PaletteSwitcher } from "@/components/palette-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { LanguageSwitcher } from "@/components/language-switcher"
+import { useTranslations } from "next-intl"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -31,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function SettingsPage() {
+    const t = useTranslations("settings")
     const { data: session, update } = useSession()
     const router = useRouter()
     const [loading, setLoading] = useState(false)
@@ -216,6 +219,20 @@ export default function SettingsPage() {
                             </CardHeader>
                             <CardContent>
                                 <PaletteSwitcher />
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>{t("language")}</CardTitle>
+                                <CardDescription>
+                                    {t("languageDesc")}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="max-w-md">
+                                    <LanguageSwitcher variant="list" />
+                                </div>
                             </CardContent>
                         </Card>
                     </TabsContent>

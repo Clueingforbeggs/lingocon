@@ -5,6 +5,7 @@ import { Languages, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { LoginForm } from "./components/login-form"
+import { getTranslations } from "next-intl/server"
 
 export const metadata: Metadata = {
   title: "Sign In",
@@ -15,7 +16,9 @@ export const metadata: Metadata = {
   },
 }
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const t = await getTranslations("auth");
+  const tCommon = await getTranslations("common");
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Background Effects */}
@@ -32,9 +35,9 @@ export default function LoginPage() {
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 mb-4">
               <Languages className="h-6 w-6" />
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight">Sign in to LingoCon</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("signInTitle")}</h1>
             <p className="text-muted-foreground">
-              Sign in to manage your languages
+              {t("signInSubtitle")}
             </p>
           </div>
 
@@ -43,15 +46,15 @@ export default function LoginPage() {
               <LoginForm />
 
               <div className="mt-6 text-center text-sm">
-                <span className="text-muted-foreground">Don&apos;t have an account? </span>
+                <span className="text-muted-foreground">{t("noAccount")} </span>
                 <Link href="/register" className="text-primary hover:underline font-medium">
-                  Sign up
+                  {tCommon("signUp")}
                 </Link>
               </div>
 
               <div className="mt-6 text-center">
                 <p className="text-xs text-muted-foreground">
-                  By signing in, you agree to our Terms of Service and Privacy Policy.
+                  {t("termsNotice")}
                 </p>
               </div>
             </CardContent>
@@ -63,7 +66,7 @@ export default function LoginPage() {
               className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="mr-1.5 h-4 w-4" />
-              Back to home
+              {t("backToHome")}
             </Link>
           </div>
         </div>

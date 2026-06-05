@@ -3,6 +3,7 @@ import type {
   MultipleChoiceExercise,
   TranslateExercise,
   MatchPairsExercise,
+  SentenceBuilderExercise,
 } from "@/types/lesson"
 
 export interface VocabItem {
@@ -11,6 +12,12 @@ export interface VocabItem {
   gloss: string       // native meaning
   ipa?: string | null
   partOfSpeech?: string | null
+  exampleSentences?: {
+    id: string
+    sentence: string
+    translation: string
+    gloss: string | null
+  }[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -84,6 +91,42 @@ function buildMatchPairs(chunk: VocabItem[]): MatchPairsExercise {
   }
 }
 
+function buildSentenceBuilder(
+  item: VocabItem,
+  pool: VocabItem[]
+): SentenceBuilderExercise | null {
+  if (!item.exampleSentences || item.exampleSentences.length === 0) return null
+  
+  // Pick a random sentence
+  const sentenceObj = item.exampleSentences[Math.floor(Math.random() * item.exampleSentences.length)]
+  
+  // Strip punctuation and split into words
+  const cleanSentence = sentenceObj.sentence.replace(/[.,!?()";:]/g, "").trim()
+  const correctWords = cleanSentence.split(/\s+/).filter(Boolean)
+  if (correctWords.length < 2) return null // Needs at least 2 words to be a builder exercise
+  
+  // Pick distractors from other words in the pool
+  const distractors: string[] = []
+  const otherWords = pool.filter(v => v.id !== item.id)
+  
+  for (let i = 0; i < Math.min(3, otherWords.length); i++) {
+    const randomWord = otherWords[Math.floor(Math.random() * otherWords.length)].lemma
+    if (!correctWords.includes(randomWord) && !distractors.includes(randomWord)) {
+      distractors.push(randomWord)
+    }
+  }
+  
+  const allWords = shuffle([...correctWords, ...distractors])
+  
+  return {
+    type: "SENTENCE_BUILDER",
+    id: `sb-${item.id}-${sentenceObj.id}`,
+    prompt: sentenceObj.translation,
+    sentence: cleanSentence,
+    words: allWords.map((text, idx) => ({ id: `word-${idx}`, text }))
+  }
+}
+
 // ─── Main generator ───────────────────────────────────────────────────────────
 
 /**
@@ -121,6 +164,12 @@ export function generateExercises(items: VocabItem[]): Exercise[] {
     // Bonus: reverse MC (native → conlang) when pool is large enough for distractors
     if (items.length >= 4) {
       recognition.push(buildMultipleChoice(item, items, "to_native"))
+    }
+
+    // Sentence builder: if example sentences exist
+    const sbExercise = buildSentenceBuilder(item, items)
+    if (sbExercise) {
+      production.push(sbExercise)
     }
   }
 

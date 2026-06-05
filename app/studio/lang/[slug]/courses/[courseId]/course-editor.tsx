@@ -12,11 +12,17 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command"
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover"
+import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog"
 import {
   GraduationCap, Plus, Trash2, Eye, EyeOff, Loader2,
-  BookOpen, FileText, MessageSquare, Type, GripVertical, ChevronDown, ChevronRight,
+  BookOpen, FileText, MessageSquare, Type, GripVertical, ChevronDown, ChevronRight, Check, ChevronsUpDown,
 } from "lucide-react"
 import {
   createLesson, addLessonItem, deleteLessonItem, deleteLesson, updateCourse,
@@ -315,6 +321,7 @@ function AddItemDropdown({
   onAdded: (item: LessonItem) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [comboboxOpen, setComboboxOpen] = useState(false)
   const [type, setType] = useState<ItemType>("VOCAB")
   const [sourceId, setSourceId] = useState("")
   const [loading, setLoading] = useState(false)
@@ -380,7 +387,7 @@ function AddItemDropdown({
                 <button
                   key={value}
                   type="button"
-                  onClick={() => { setType(value); setSourceId("") }}
+                  onClick={() => { setType(value); setSourceId(""); setComboboxOpen(false) }}
                   className={cn(
                     "flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-xs font-medium transition-all",
                     type === value
@@ -398,16 +405,49 @@ function AddItemDropdown({
           {options.length > 0 ? (
             <div className="space-y-2">
               <Label>Select {type === "VOCAB" ? "word" : type === "GRAMMAR" ? "page" : "text"}</Label>
-              <Select value={sourceId} onValueChange={setSourceId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose…" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {options.map(o => (
-                    <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={comboboxOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    {sourceId
+                      ? options.find((option) => option.id === sourceId)?.label
+                      : "Choose..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0 flex max-h-80" align="start">
+                  <Command className="w-full">
+                    <CommandInput placeholder={`Search ${type.toLowerCase()}...`} />
+                    <CommandList>
+                      <CommandEmpty>No {type.toLowerCase()} found.</CommandEmpty>
+                      <CommandGroup>
+                        {options.map((option) => (
+                          <CommandItem
+                            key={option.id}
+                            value={option.label}
+                            onSelect={() => {
+                              setSourceId(option.id)
+                              setComboboxOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                sourceId === option.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {option.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">

@@ -24,7 +24,16 @@ async function getLessonData(lessonId: string, userId: string) {
         orderBy: { order: "asc" },
         include: {
           dictEntry: {
-            select: { id: true, lemma: true, gloss: true, ipa: true, partOfSpeech: true },
+            select: { 
+              id: true, 
+              lemma: true, 
+              gloss: true, 
+              ipa: true, 
+              partOfSpeech: true,
+              exampleSentences: {
+                select: { id: true, sentence: true, translation: true, gloss: true }
+              }
+            },
           },
         },
       },

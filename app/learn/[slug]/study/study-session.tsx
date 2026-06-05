@@ -9,6 +9,7 @@ import { Flame, Trophy, ArrowLeft, X, Sparkles, ChevronRight, RotateCcw, BookOpe
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import confetti from "canvas-confetti"
 import type { RatingKey } from "@/lib/fsrs"
 
 interface StudyCard {
@@ -244,8 +245,12 @@ export function StudySession({ cards, languageId, languageSlug, languageName, to
               onClick={() => handleRate(key)}
               disabled={submitting}
               className={cn(
-                "relative rounded-2xl py-3 text-sm font-semibold text-white transition-all active:scale-95 disabled:opacity-50",
-                color
+                "relative rounded-2xl border-b-4 py-3 text-sm font-semibold text-white transition-all active:border-b-0 active:translate-y-[4px] disabled:opacity-50",
+                color,
+                key === "AGAIN" ? "border-red-700" :
+                key === "HARD" ? "border-orange-700" :
+                key === "GOOD" ? "border-emerald-700" :
+                "border-blue-700"
               )}
             >
               {label}
@@ -296,6 +301,36 @@ function SummaryScreen({
   const isPerfect = accuracy === 100 && uniqueCards > 0
   const remaining = Math.max(0, totalDue - total)
   const [showMissed, setShowMissed] = useState(false)
+
+  useEffect(() => {
+    if (accuracy >= 70) {
+      const duration = 2500
+      const end = Date.now() + duration
+      
+      const frame = () => {
+        confetti({
+          particleCount: 4,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6"]
+        })
+        confetti({
+          particleCount: 4,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6"]
+        })
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame)
+        }
+      }
+      
+      frame()
+    }
+  }, [accuracy])
 
   return (
     <div className="max-w-lg mx-auto space-y-8 text-center">

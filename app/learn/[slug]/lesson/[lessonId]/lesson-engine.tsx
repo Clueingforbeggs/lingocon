@@ -10,7 +10,8 @@ import {
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import type { Exercise, MultipleChoiceExercise, TranslateExercise, MatchPairsExercise } from "@/types/lesson"
+import confetti from "canvas-confetti"
+import type { Exercise, MultipleChoiceExercise, TranslateExercise, MatchPairsExercise, SentenceBuilderExercise } from "@/types/lesson"
 
 // ─── XP config ────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ export function LessonEngine({
   const [correctCount, setCorrect] = useState(0)
   const [selected, setSelected]   = useState<string | null>(null)  // MC selected option id
   const [typedAnswer, setTyped]   = useState("")
+  const [selectedBuilderWords, setSelectedBuilderWords] = useState<string[]>([])
   const [saving, setSaving]       = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -86,6 +88,7 @@ export function LessonEngine({
     }
     setSelected(null)
     setTyped("")
+    setSelectedBuilderWords([])
   }, [idx, current?.type, feedback.status])
 
   // ── Check answer ──────────────────────────────────────────────────────────
@@ -105,6 +108,10 @@ export function LessonEngine({
       correct = isAnswerCorrect(typedAnswer, current.answer)
       correctText = current.answer
       hint = current.hint
+    } else if (current.type === "SENTENCE_BUILDER") {
+      const selectedTexts = selectedBuilderWords.map(id => current.words.find(w => w.id === id)?.text).join(" ")
+      correct = isAnswerCorrect(selectedTexts, current.sentence)
+      correctText = current.sentence
     }
 
     if (correct) {
@@ -119,7 +126,7 @@ export function LessonEngine({
         setTimeout(() => setScreen("failed"), 1400)
       }
     }
-  }, [current, feedback.status, selected, typedAnswer, hearts])
+  }, [current, feedback.status, selected, typedAnswer, hearts, selectedBuilderWords])
 
   // ── Advance to next exercise ───────────────────────────────────────────────
 
@@ -223,7 +230,8 @@ export function LessonEngine({
 
   const canCheck =
     (current.type === "MULTIPLE_CHOICE" && selected !== null) ||
-    (current.type === "TRANSLATE" && typedAnswer.trim().length > 0)
+    (current.type === "TRANSLATE" && typedAnswer.trim().length > 0) ||
+    (current.type === "SENTENCE_BUILDER" && selectedBuilderWords.length > 0)
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -294,6 +302,14 @@ export function LessonEngine({
                 onChange={setTyped}
                 onSubmit={checkAnswer}
                 inputRef={inputRef}
+              />
+            )}
+            {current.type === "SENTENCE_BUILDER" && (
+              <SentenceBuilderCard
+                exercise={current}
+                selectedWords={selectedBuilderWords}
+                onSelect={setSelectedBuilderWords}
+                feedback={feedback}
               />
             )}
           </div>
@@ -399,16 +415,16 @@ function MultipleChoiceCard({
               onClick={() => feedback.status === "answering" && onSelect(option.id)}
               disabled={isRevealed}
               className={cn(
-                "relative text-left rounded-2xl border-2 px-5 py-4 text-base font-medium transition-all duration-150",
-                "disabled:cursor-default active:scale-[0.98]",
+                "relative text-left rounded-2xl border-2 border-b-4 px-5 py-4 text-base font-medium transition-all duration-150",
+                "disabled:cursor-default active:border-b-2 active:translate-y-[2px]",
                 // Default state
                 !isSelected && !isRevealed && "border-border bg-card hover:border-primary/40 hover:bg-primary/5",
                 // Selected but not yet checked
-                isSelected && !isRevealed && "border-primary bg-primary/10 text-primary",
+                isSelected && !isRevealed && "border-primary bg-primary/10 text-primary border-primary/50",
                 // Revealed correct
                 isCorrect && isRevealed && "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400",
                 // Revealed wrong selection
-                isWrong && "border-red-500 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400",
+                isWrong && "border-red-500 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 animate-shake",
                 // Unselected after reveal
                 !isSelected && !isCorrect && isRevealed && "border-border bg-card opacity-50",
               )}
@@ -550,10 +566,10 @@ function MatchPairsCard({
                 onClick={() => handleLeft(pair.id)}
                 disabled={isMatched}
                 className={cn(
-                  "w-full rounded-2xl border-2 px-4 py-3 text-sm font-semibold transition-all duration-150",
-                  "disabled:cursor-default text-center",
-                  isMatched   && "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 scale-95 opacity-60",
-                  isSelected  && !isMatched && "border-primary bg-primary/10 text-primary scale-105",
+                  "w-full rounded-2xl border-2 border-b-4 px-4 py-3 text-sm font-semibold transition-all duration-150",
+                  "disabled:cursor-default text-center active:border-b-2 active:translate-y-[2px]",
+                  isMatched   && "border-emerald-400 border-b-2 translate-y-[2px] bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 scale-95 opacity-60",
+                  isSelected  && !isMatched && "border-primary bg-primary/10 text-primary scale-105 border-primary/50",
                   isShaking   && "border-red-400 bg-red-50 dark:bg-red-950/30 text-red-600 animate-shake",
                   !isSelected && !isMatched && !isShaking && "border-border bg-card hover:border-primary/40",
                 )}
@@ -577,15 +593,96 @@ function MatchPairsCard({
                 onClick={() => handleRight(pair.id)}
                 disabled={isMatched}
                 className={cn(
-                  "w-full rounded-2xl border-2 px-4 py-3 text-sm font-semibold transition-all duration-150",
-                  "disabled:cursor-default text-center",
-                  isMatched   && "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 scale-95 opacity-60",
-                  isSelected  && !isMatched && "border-primary bg-primary/10 text-primary scale-105",
+                  "w-full rounded-2xl border-2 border-b-4 px-4 py-3 text-sm font-semibold transition-all duration-150",
+                  "disabled:cursor-default text-center active:border-b-2 active:translate-y-[2px]",
+                  isMatched   && "border-emerald-400 border-b-2 translate-y-[2px] bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 scale-95 opacity-60",
+                  isSelected  && !isMatched && "border-primary bg-primary/10 text-primary scale-105 border-primary/50",
                   isShaking   && "border-red-400 bg-red-50 dark:bg-red-950/30 text-red-600 animate-shake",
                   !isSelected && !isMatched && !isShaking && "border-border bg-card hover:border-primary/40",
                 )}
               >
                 {pair.right}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Sentence Builder Card ────────────────────────────────────────────────────
+
+function SentenceBuilderCard({
+  exercise,
+  selectedWords,
+  onSelect,
+  feedback,
+}: {
+  exercise: SentenceBuilderExercise
+  selectedWords: string[]
+  onSelect: (words: string[]) => void
+  feedback: FeedbackState
+}) {
+  const isRevealed = feedback.status !== "answering"
+
+  const handleBankClick = (id: string) => {
+    if (isRevealed || selectedWords.includes(id)) return
+    onSelect([...selectedWords, id])
+  }
+
+  const handleLineClick = (id: string) => {
+    if (isRevealed) return
+    onSelect(selectedWords.filter(w => w !== id))
+  }
+
+  return (
+    <div className="space-y-10">
+      <div>
+        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
+          Translate this sentence
+        </p>
+        <p className="text-3xl font-bold tracking-tight">{exercise.prompt}</p>
+      </div>
+
+      <div className="flex flex-col gap-8">
+        {/* Answer Line */}
+        <div className="min-h-[60px] border-b-2 border-border/60 flex flex-wrap gap-2 pb-2">
+          {selectedWords.map(id => {
+            const word = exercise.words.find(w => w.id === id)
+            if (!word) return null
+            return (
+              <button
+                key={`line-${id}`}
+                onClick={() => handleLineClick(id)}
+                className={cn(
+                  "rounded-2xl border-2 border-b-4 px-4 py-2 text-base font-medium transition-all",
+                  "bg-card hover:bg-muted active:border-b-2 active:translate-y-[2px]",
+                  isRevealed && "pointer-events-none opacity-80"
+                )}
+              >
+                {word.text}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Word Bank */}
+        <div className="flex flex-wrap gap-3 justify-center min-h-[120px]">
+          {exercise.words.map(word => {
+            const isSelected = selectedWords.includes(word.id)
+            return (
+              <button
+                key={`bank-${word.id}`}
+                onClick={() => handleBankClick(word.id)}
+                disabled={isSelected || isRevealed}
+                className={cn(
+                  "rounded-2xl border-2 border-b-4 px-4 py-2 text-base font-medium transition-all duration-150",
+                  "bg-card active:border-b-2 active:translate-y-[2px] disabled:cursor-default",
+                  isSelected ? "bg-muted text-muted border-border/40 opacity-0 pointer-events-none scale-90" : "hover:border-primary/40 text-foreground"
+                )}
+              >
+                {word.text}
               </button>
             )
           })}
@@ -610,6 +707,34 @@ function CompleteScreen({
   courseId: string
 }) {
   const isPerfect = heartsLeft === maxHearts
+
+  useEffect(() => {
+    const duration = 2500
+    const end = Date.now() + duration
+    
+    const frame = () => {
+      confetti({
+        particleCount: 4,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6"]
+      })
+      confetti({
+        particleCount: 4,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6"]
+      })
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame)
+      }
+    }
+    
+    frame()
+  }, [])
 
   return (
     <div className="container mx-auto max-w-md px-4 py-16 flex flex-col items-center text-center gap-8">

@@ -121,12 +121,22 @@ export default async function CourseDetailPage({
 
       {/* Lessons */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Lessons</h2>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Lessons</h2>
+            {enrollment && course.lessons.length > 0 && (
+              <span className="text-sm font-medium text-muted-foreground">
+                {Math.round((completedCount / course.lessons.length) * 100)}% completed
+              </span>
+            )}
+          </div>
           {enrollment && course.lessons.length > 0 && (
-            <span className="text-sm text-muted-foreground">
-              {completedCount} / {course.lessons.length} completed
-            </span>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+                style={{ width: `${(completedCount / course.lessons.length) * 100}%` }}
+              />
+            </div>
           )}
         </div>
 
@@ -136,8 +146,8 @@ export default async function CourseDetailPage({
 
           return (
             <Card key={lesson.id} className={cn(
-              "overflow-hidden transition-colors",
-              isDone && "border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/10"
+              "overflow-hidden transition-all duration-200",
+              isDone ? "border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/10" : "hover:border-primary/30"
             )}>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">

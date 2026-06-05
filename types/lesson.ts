@@ -30,10 +30,19 @@ export interface MatchPairsExercise {
   pairs: { id: string; left: string; right: string }[]
 }
 
+export interface SentenceBuilderExercise {
+  type: "SENTENCE_BUILDER"
+  id: string
+  prompt: string // e.g. Native translation
+  sentence: string // Correct conlang sentence
+  words: { id: string; text: string }[] // Scrambled word pool
+}
+
 export type Exercise =
   | MultipleChoiceExercise
   | TranslateExercise
   | MatchPairsExercise
+  | SentenceBuilderExercise
 
 // ─── Lesson Result ────────────────────────────────────────────────────────────
 

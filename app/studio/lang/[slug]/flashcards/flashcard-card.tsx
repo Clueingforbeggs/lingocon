@@ -93,7 +93,7 @@ export function FlashcardCard({
             {ipa && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Volume2 className="h-4 w-4" />
-                <span className="font-mono text-lg">/{ipa}/</span>
+                <span className="font-ipa text-lg">/{ipa}/</span>
               </div>
             )}
           </div>

@@ -102,7 +102,7 @@ const IPAInput = React.forwardRef<HTMLInputElement, IPAInputProps>(
             <div className="relative flex items-center">
                 <Input
                     ref={setRefs}
-                    className={cn("pr-10 font-mono", className)}
+                    className={cn("pr-10 font-ipa", className)}
                     value={value}
                     onChange={handleInputChange}
                     onSelect={handleSelect}

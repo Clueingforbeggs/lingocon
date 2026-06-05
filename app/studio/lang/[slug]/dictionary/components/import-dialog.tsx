@@ -124,7 +124,7 @@ export function ImportDialog({
                       <TableRow key={idx}>
                         <TableCell className="font-medium">{row.lemma}</TableCell>
                         <TableCell>{row.gloss}</TableCell>
-                        <TableCell className="font-mono text-sm">
+                        <TableCell className="font-ipa text-sm">
                           {row.ipa ? `/${row.ipa}/` : "-"}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">

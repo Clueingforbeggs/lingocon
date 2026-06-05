@@ -339,7 +339,7 @@ export function PhonologyView({ language, symbols }: PhonologyViewProps) {
                                                         >
                                                             <div className="flex justify-center gap-3">
                                                                 {cell?.voiceless && (
-                                                                    <span className="font-mono text-base text-foreground inline-flex items-center gap-1 group">
+                                                                    <span className="font-ipa text-base text-foreground inline-flex items-center gap-1 group">
                                                                         <span className="cursor-default hover:text-primary transition-colors" title={`${place} voiceless ${manner.toLowerCase()}`}>
                                                                             {cell.voiceless}
                                                                         </span>
@@ -355,7 +355,7 @@ export function PhonologyView({ language, symbols }: PhonologyViewProps) {
                                                                     </span>
                                                                 )}
                                                                 {cell?.voiced && (
-                                                                    <span className="font-mono text-base text-foreground inline-flex items-center gap-1 group">
+                                                                    <span className="font-ipa text-base text-foreground inline-flex items-center gap-1 group">
                                                                         <span className="cursor-default hover:text-primary transition-colors" title={`${place} voiced ${manner.toLowerCase()}`}>
                                                                             {cell.voiced}
                                                                         </span>
@@ -465,7 +465,7 @@ export function PhonologyView({ language, symbols }: PhonologyViewProps) {
                                                                         {vowels.map((v) => (
                                                                             <span
                                                                                 key={v.ipa}
-                                                                                className="font-mono text-base inline-flex items-center gap-1 group"
+                                                                                className="font-ipa text-base inline-flex items-center gap-1 group"
                                                                             >
                                                                                 <span
                                                                                     className="cursor-default hover:text-primary transition-colors"

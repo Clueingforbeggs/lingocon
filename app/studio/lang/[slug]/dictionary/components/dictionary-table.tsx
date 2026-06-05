@@ -214,7 +214,7 @@ export function DictionaryTable({
                   )}
                 </TableCell>
                 <TableCell>{entry.gloss}</TableCell>
-                <TableCell className="font-mono text-sm">
+                <TableCell className="font-ipa text-sm">
                   {entry.ipa || (entry as any).audioUrl ? (
                     <span className="flex items-center gap-2">
                       {entry.ipa && <span>/{entry.ipa}/</span>}

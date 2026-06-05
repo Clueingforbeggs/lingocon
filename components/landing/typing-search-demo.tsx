@@ -91,7 +91,7 @@ export function TypingSearchDemo() {
                 <div className="flex items-center gap-2">
                   <span className="font-semibold leading-none">{e.lemma}</span>
                   {e.ipa && (
-                    <span className="font-mono text-xs text-muted-foreground">/{e.ipa}/</span>
+                    <span className="font-ipa text-xs text-muted-foreground">/{e.ipa}/</span>
                   )}
                 </div>
                 <div className="mt-1 truncate text-xs text-muted-foreground">{e.gloss}</div>

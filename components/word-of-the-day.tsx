@@ -60,7 +60,7 @@ export async function WordOfTheDay() {
                 {word.ipa && (
                     <div className="flex items-center gap-1.5 mt-2 text-muted-foreground">
                         <Volume2 className="h-3.5 w-3.5" />
-                        <span className="font-mono text-sm">/{word.ipa}/</span>
+                        <span className="font-ipa text-sm">/{word.ipa}/</span>
                     </div>
                 )}
             </div>

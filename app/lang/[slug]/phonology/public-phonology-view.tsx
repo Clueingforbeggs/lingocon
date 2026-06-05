@@ -286,8 +286,8 @@ export function PublicPhonologyView({ language, symbols }: PublicPhonologyViewPr
                                             return (
                                                 <td key={`${manner}-${place}`} colSpan={2} className="p-2 text-center">
                                                     <div className="flex justify-center gap-3">
-                                                        {cell?.voiceless && <span className="font-mono text-base" title={`${place} voiceless ${manner.toLowerCase()}`}>{cell.voiceless}</span>}
-                                                        {cell?.voiced && <span className="font-mono text-base" title={`${place} voiced ${manner.toLowerCase()}`}>{cell.voiced}</span>}
+                                                        {cell?.voiceless && <span className="font-ipa text-base" title={`${place} voiceless ${manner.toLowerCase()}`}>{cell.voiceless}</span>}
+                                                        {cell?.voiced && <span className="font-ipa text-base" title={`${place} voiced ${manner.toLowerCase()}`}>{cell.voiced}</span>}
                                                         {!cell && <span className="text-muted-foreground/20">·</span>}
                                                     </div>
                                                 </td>
@@ -332,7 +332,7 @@ export function PublicPhonologyView({ language, symbols }: PublicPhonologyViewPr
                                                         {vowels.length > 0 ? (
                                                             <div className="flex justify-center gap-2">
                                                                 {vowels.map((v) => (
-                                                                    <span key={v.ipa} className="font-mono text-base" title={`${v.height} ${v.backness.toLowerCase()} ${v.rounded ? "rounded" : "unrounded"} vowel`}>{v.ipa}</span>
+                                                                    <span key={v.ipa} className="font-ipa text-base" title={`${v.height} ${v.backness.toLowerCase()} ${v.rounded ? "rounded" : "unrounded"} vowel`}>{v.ipa}</span>
                                                                 ))}
                                                             </div>
                                                         ) : (

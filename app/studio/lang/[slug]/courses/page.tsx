@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { GraduationCap, Plus, ListChecks, Users, Eye, EyeOff, Archive } from "lucide-react"
 import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
 import { CreateCourseDialog } from "./create-course-dialog"
 
 export const dynamic = "force-dynamic"
@@ -164,7 +163,6 @@ export default async function StudioCoursesPage({
           </div>
         )}
       </main>
-      <Footer />
     </div>
   )
 }

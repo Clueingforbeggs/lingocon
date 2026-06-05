@@ -74,7 +74,7 @@ function ScriptVisual() {
                     className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-card/70 py-2.5"
                 >
                     <span className="text-xl leading-none">{s.symbol}</span>
-                    <span className="mt-1 font-mono text-[9px] text-muted-foreground">/{s.ipa}/</span>
+                    <span className="mt-1 font-ipa text-[9px] text-muted-foreground">/{s.ipa}/</span>
                 </div>
             ))}
         </div>

@@ -360,7 +360,7 @@ export function IPAKeyboard({ onSelect, onDelete, onClose, currentValue = "" }: 
                         variant="outline"
                         size="sm"
                         className={cn(
-                            "h-10 min-w-[40px] px-2 font-mono text-lg hover:bg-primary hover:text-primary-foreground transition-colors",
+                            "h-10 min-w-[40px] px-2 font-ipa text-lg hover:bg-primary hover:text-primary-foreground transition-colors",
                             symbol.combining && "text-base"
                         )}
                         onClick={() => onSelect(symbol.symbol)}
@@ -388,7 +388,7 @@ export function IPAKeyboard({ onSelect, onDelete, onClose, currentValue = "" }: 
                 {/* Header with current value, backspace, and listen button */}
                 {currentValue && (
                     <div className="p-3 border-b flex items-center justify-between gap-2 bg-muted/30">
-                        <div className="flex-1 font-mono text-lg truncate">
+                        <div className="flex-1 font-ipa text-lg truncate">
                             {currentValue}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">

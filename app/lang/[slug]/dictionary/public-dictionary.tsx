@@ -226,7 +226,7 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
                         )}
                       </TableCell>
                       <TableCell>{entry.gloss}</TableCell>
-                      <TableCell className="hidden font-mono text-sm sm:table-cell">
+                      <TableCell className="hidden font-ipa text-sm sm:table-cell">
                         {entry.ipa || (entry as any).audioUrl ? (
                           <span className="flex items-center gap-2">
                             {entry.ipa && <span>/{entry.ipa}/</span>}
@@ -275,7 +275,7 @@ export function PublicDictionary({ entries, symbols, voiceId, speed }: PublicDic
                 {(selectedEntry.ipa || (selectedEntry as any).audioUrl || selectedEntry.partOfSpeech) && (
                   <div className="flex items-center gap-3">
                     {(selectedEntry.ipa || (selectedEntry as any).audioUrl) && (
-                      <div className="flex items-center gap-2 text-sm font-mono bg-muted/50 px-2 py-1 rounded">
+                      <div className="flex items-center gap-2 text-sm font-ipa bg-muted/50 px-2 py-1 rounded">
                         {selectedEntry.ipa && <span>/{selectedEntry.ipa}/</span>}
                         <IPASpeaker ipa={selectedEntry.ipa || undefined} audioUrl={(selectedEntry as any).audioUrl} size="sm" voiceId={voiceId} speed={speed} />
                       </div>

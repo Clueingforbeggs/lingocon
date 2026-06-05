@@ -195,7 +195,7 @@ export function IpaChartGenerator({
                   />
                   <Label htmlFor={`symbol-${symbol.id}`} className="cursor-pointer">
                     <span className="font-bold">{symbol.symbol}</span>
-                    <span className="text-muted-foreground ml-2 text-xs font-mono">/{symbol.ipa}/</span>
+                    <span className="text-muted-foreground ml-2 text-xs font-ipa">/{symbol.ipa}/</span>
                   </Label>
                 </div>
               ))}

@@ -112,7 +112,50 @@ export function LanguageSwitcher({ variant = "dropdown" }: { variant?: "dropdown
     return (
       <div className="w-full border rounded-md bg-card">
         <div className="p-2 flex flex-col gap-1">
-          <Content />
+          <div onClick={() => switchLocale("en")} className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
+            <Globe className="mr-2 h-4 w-4 text-muted-foreground" />
+            <span className="flex-1">English</span>
+            <span className="text-xs text-muted-foreground ml-2">100%</span>
+            {currentLocale === "en" && <Check className="ml-2 h-4 w-4" />}
+          </div>
+
+          {translations.length > 0 && (
+            <>
+              <div className="-mx-1 my-1 h-px bg-muted" />
+              <div className="px-2 py-1.5 text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                Conlang Translations
+              </div>
+              <div className="flex flex-col">
+                {translations.map((lang) => (
+                  <div
+                    key={lang.id}
+                    onClick={() => switchLocale(`conlang:${lang.id}`)}
+                    className="relative flex cursor-pointer select-none flex-col items-start rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <div className="flex items-center w-full mb-1">
+                      {lang.flagUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={lang.flagUrl} alt="" className="w-4 h-4 rounded-sm object-cover mr-2" />
+                      ) : (
+                        <Globe className="mr-2 h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span className="flex-1 truncate">{lang.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{lang.percentage}%</span>
+                      {currentLocale === `conlang:${lang.id}` && <Check className="ml-2 h-4 w-4" />}
+                    </div>
+                    <Progress value={lang.percentage} className="h-1 w-full mt-1" />
+                    <span className="text-[10px] text-muted-foreground mt-1">by @{lang.ownerName}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="-mx-1 my-1 h-px bg-muted" />
+          <Link href="/dashboard/new-language" className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none text-primary hover:bg-accent hover:text-primary">
+            <Plus className="mr-2 h-4 w-4" />
+            {t("addConlang")}
+          </Link>
         </div>
       </div>
     );

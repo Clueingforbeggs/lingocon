@@ -8,16 +8,9 @@ import { prisma } from "@/lib/prisma"
 import type { ModuleType, Prisma } from "@prisma/client"
 import { parseThemeData, type ResolvedTheme } from "@/lib/modules/theme"
 import { STUDIO_NAV_TYPES } from "@/lib/modules/surfaces"
+import { resolveGrantedPermissions } from "@/lib/modules/utils"
 
-function resolveGrantedPermissions(
-  granted: unknown,
-  declared: unknown
-): string[] {
-  const g = granted as string[] | null
-  const d = declared as string[] | null
-  if (g && g.length > 0) return g
-  return d ?? []
-}
+
 
 export const MODULE_CARD_SELECT = {
   id: true,
@@ -32,6 +25,7 @@ export const MODULE_CARD_SELECT = {
   addCount: true,
   ratingSum: true,
   ratingCount: true,
+  ratingAverage: true,
   updatedAt: true,
   author: { select: { id: true, name: true, image: true } },
 } satisfies Prisma.ModuleSelect
@@ -60,11 +54,11 @@ export async function listPublishedModules(opts: {
       : {}),
   }
 
-  const orderBy: Prisma.ModuleOrderByWithRelationInput =
+  const orderBy: any =
     sort === "recent"
       ? { updatedAt: "desc" }
       : sort === "rating"
-      ? { ratingCount: "desc" }
+      ? [{ ratingAverage: "desc" }, { ratingCount: "desc" }]
       : sort === "name"
       ? { name: "asc" }
       : { addCount: "desc" }

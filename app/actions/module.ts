@@ -9,8 +9,9 @@ import { createActivity } from "@/lib/utils/activity"
 import { isAdmin } from "@/lib/admin"
 import { logAdminAction } from "@/app/actions/admin-audit"
 import { scanBundle } from "@/lib/modules/scan"
-import type { ModuleTier } from "@prisma/client"
 import { z } from "zod"
+import { rulesTextFromData } from "@/lib/modules/utils"
+import type { ModuleTier } from "@prisma/client"
 import {
   createModuleSchema,
   updateModuleSchema,
@@ -328,17 +329,22 @@ export async function reviewModule(input: ReviewModuleInput): Promise<ActionResu
       update: { rating, body: body || null },
     })
 
-    if (prior) {
-      await tx.module.update({
-        where: { id: moduleId },
-        data: { ratingSum: { increment: rating - prior.rating } },
-      })
-    } else {
-      await tx.module.update({
-        where: { id: moduleId },
-        data: { ratingSum: { increment: rating }, ratingCount: { increment: 1 } },
-      })
-    }
+    const sumDelta = prior ? rating - prior.rating : rating
+    const countDelta = prior ? 0 : 1
+
+    const updated = await tx.module.update({
+      where: { id: moduleId },
+      data: { 
+        ratingSum: { increment: sumDelta },
+        ...(countDelta > 0 ? { ratingCount: { increment: countDelta } } : {})
+      },
+      select: { ratingSum: true, ratingCount: true }
+    })
+
+    await tx.module.update({
+      where: { id: moduleId },
+      data: { ratingAverage: updated.ratingCount > 0 ? updated.ratingSum / updated.ratingCount : 0 }
+    })
   })
 
   revalidatePath(`/modules/${mod.slug}`)
@@ -367,12 +373,7 @@ export async function reportModule(input: ReportModuleInput): Promise<ActionResu
 // needed: the module only contributes data, the platform runs trusted code.
 // ───────────────────────────────────────────────────────────────────────────
 
-function rulesTextFromData(data: unknown): string {
-  if (!data || typeof data !== "object") return ""
-  const raw = (data as Record<string, unknown>).rules
-  if (Array.isArray(raw)) return raw.map(String).join("\n")
-  return typeof raw === "string" ? raw : ""
-}
+
 
 /**
  * Resolve the enabled install of `moduleId` for `userId` on `languageId`

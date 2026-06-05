@@ -127,6 +127,10 @@ export function ModuleFrame({
           setErrorMsg(msg.message)
           break
         case "download": {
+          if (!permissions.includes("export")) {
+            setErrorMsg('Permission "export" not granted')
+            return
+          }
           // The module already had permission to read this data; the host just
           // turns the string it produced into a file the user can save.
           const content = typeof msg.content === "string" ? msg.content : ""

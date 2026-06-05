@@ -746,6 +746,7 @@ model Module {
   addCount    Int @default(0)   // number of active installs
   ratingSum   Int @default(0)   // sum of review ratings
   ratingCount Int @default(0)   // number of reviews
+  ratingAverage Float @default(0) // average review rating
 
   authorId    String
   createdAt   DateTime @default(now())

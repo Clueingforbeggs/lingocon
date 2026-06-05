@@ -14,22 +14,11 @@ import { parseThemeData, type ResolvedTheme } from "@/lib/modules/theme"
 import { ModuleFrame } from "@/components/modules/module-frame"
 import { hasRuntimeBundle } from "@/lib/modules/runtime-bundles"
 import { AddModuleButton } from "@/components/modules/add-module-button"
+import { resolveGrantedPermissions, rulesTextFromData } from "@/lib/modules/utils"
 
 export const dynamic = "force-dynamic"
 
-function rulesTextFromData(data: unknown): string {
-  if (!data || typeof data !== "object") return ""
-  const raw = (data as Record<string, unknown>).rules
-  if (Array.isArray(raw)) return raw.map(String).join("\n")
-  return typeof raw === "string" ? raw : ""
-}
 
-function resolveGranted(granted: unknown, declared: unknown): string[] {
-  const g = granted as string[] | null
-  const d = declared as string[] | null
-  if (g && g.length > 0) return g
-  return d ?? []
-}
 
 export default async function StudioModulePanelPage({
   params,
@@ -91,7 +80,7 @@ export default async function StudioModulePanelPage({
 
   const typeMeta = getModuleTypeMeta(mod.type)
   const bundleCode = install?.version.bundleCode ?? version.bundleCode ?? null
-  const grantedPermissions = resolveGranted(
+  const grantedPermissions = resolveGrantedPermissions(
     install?.grantedPermissions,
     install?.version.permissions ?? version.permissions
   )

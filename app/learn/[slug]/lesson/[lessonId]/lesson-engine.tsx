@@ -329,15 +329,15 @@ export function LessonEngine({
             />
           </div>
 
-          {/* Romanization toggle — only shown when language has a custom script */}
-          {scriptSymbols.some(s => s.latin) && (
+          {/* Romanization toggle — shown when there's a custom font or latin mappings */}
+          {(fontFamily || scriptSymbols.some(s => s.latin)) && (
             <button
               onClick={() => setShowRoman(p => !p)}
               className={cn(
                 "flex items-center rounded-lg p-1.5 transition-colors",
                 showRoman ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
               )}
-              title={showRoman ? "Hide romanization" : "Show romanization"}
+              title={showRoman ? "Hide romanization / show script" : "Show romanization / hide script font"}
             >
               <Languages className="h-4 w-4" />
             </button>
@@ -518,14 +518,16 @@ function MultipleChoiceCard({
   scriptSymbols: ScriptSymbol[]
   showRoman: boolean
 }) {
-  const roman = showRoman ? romanize(exercise.word, scriptSymbols) : null
+  const isConlangWord = exercise.direction === "to_native"
+  const useScriptFont = isConlangWord && !showRoman
+  const roman = isConlangWord && showRoman ? romanize(exercise.word, scriptSymbols) : null
   return (
     <div className="space-y-8">
       <div>
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
           {exercise.prompt}
         </p>
-        <p className="text-5xl font-bold tracking-tight font-custom-script">{exercise.word}</p>
+        <p className={cn("text-5xl font-bold tracking-tight", useScriptFont && "font-custom-script")}>{exercise.word}</p>
         {roman && roman !== exercise.word && (
           <p className="text-xl text-muted-foreground mt-2">{roman}</p>
         )}
@@ -585,7 +587,9 @@ function TranslateCard({
   showRoman: boolean
 }) {
   const revealed = feedback.status !== "answering"
-  const roman = showRoman ? romanize(exercise.word, scriptSymbols) : null
+  const isConlangWord = exercise.direction === "to_native"
+  const useScriptFont = isConlangWord && !showRoman
+  const roman = isConlangWord && showRoman ? romanize(exercise.word, scriptSymbols) : null
 
   return (
     <div className="space-y-8">
@@ -593,7 +597,7 @@ function TranslateCard({
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
           {exercise.prompt}
         </p>
-        <p className="text-5xl font-bold tracking-tight font-custom-script">{exercise.word}</p>
+        <p className={cn("text-5xl font-bold tracking-tight", useScriptFont && "font-custom-script")}>{exercise.word}</p>
         {roman && roman !== exercise.word && (
           <p className="text-xl text-muted-foreground mt-2">{roman}</p>
         )}
@@ -756,7 +760,7 @@ function MatchPairsCard({
                   !isSelected && !isMatched && !isShaking && "border-border bg-card hover:border-primary/40",
                 )}
               >
-                <span className="font-custom-script">{pair.left}</span>
+                <span className={cn(!showRoman && "font-custom-script")}>{pair.left}</span>
                 {showRoman && (() => { const r = romanize(pair.left, scriptSymbols); return r !== pair.left ? <span className="block text-xs font-normal opacity-70 mt-0.5">{r}</span> : null })()}
               </button>
             )
@@ -848,7 +852,7 @@ function SentenceBuilderCard({
                   isRevealed && "pointer-events-none opacity-80"
                 )}
               >
-                <span className="font-custom-script">{word.text}</span>
+                <span className={cn(!showRoman && "font-custom-script")}>{word.text}</span>
                 {showRoman && (() => { const r = romanize(word.text, scriptSymbols); return r !== word.text ? <span className="block text-xs font-normal opacity-60">{r}</span> : null })()}
               </button>
             )
@@ -870,7 +874,7 @@ function SentenceBuilderCard({
                   isSelected ? "bg-muted text-muted border-border/40 opacity-0 pointer-events-none scale-90" : "hover:border-primary/40 text-foreground"
                 )}
               >
-                <span className="font-custom-script">{word.text}</span>
+                <span className={cn(!showRoman && "font-custom-script")}>{word.text}</span>
                 {showRoman && (() => { const r = romanize(word.text, scriptSymbols); return r !== word.text ? <span className="block text-xs font-normal opacity-60">{r}</span> : null })()}
               </button>
             )

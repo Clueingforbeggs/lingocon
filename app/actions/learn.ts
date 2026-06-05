@@ -447,6 +447,104 @@ export async function updateCourse(
   return { data: updated }
 }
 
+export async function updateLesson(lessonId: string, data: { title?: string; description?: string | null }) {
+  const userId = await requireAuth()
+  const lesson = await prisma.courseLesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, course: { select: { languageId: true } } },
+  })
+  if (!lesson) return { error: "Not found" }
+  if (!(await canEditLanguage(lesson.course.languageId, userId))) return { error: "Not found" }
+  const updated = await prisma.courseLesson.update({ where: { id: lessonId }, data })
+  return { data: updated }
+}
+
+export async function reorderLessonItems(lessonId: string, orderedIds: string[]) {
+  const userId = await requireAuth()
+  const lesson = await prisma.courseLesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, course: { select: { languageId: true } } },
+  })
+  if (!lesson) return { error: "Not found" }
+  if (!(await canEditLanguage(lesson.course.languageId, userId))) return { error: "Not found" }
+  await prisma.$transaction(
+    orderedIds.map((id, order) => prisma.lessonItem.update({ where: { id }, data: { order } }))
+  )
+  return { data: true }
+}
+
+export async function createAndAddSentence(
+  lessonId: string,
+  dictEntryId: string,
+  sentence: string,
+  translation: string,
+  gloss?: string,
+) {
+  const userId = await requireAuth()
+  const lesson = await prisma.courseLesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, course: { select: { languageId: true } } },
+  })
+  if (!lesson) return { error: "Not found" }
+  if (!(await canEditLanguage(lesson.course.languageId, userId))) return { error: "Not found" }
+
+  const entry = await prisma.dictionaryEntry.findUnique({
+    where: { id: dictEntryId },
+    select: { languageId: true },
+  })
+  if (!entry || entry.languageId !== lesson.course.languageId) {
+    return { error: "Word does not belong to this language" }
+  }
+
+  const last = await prisma.lessonItem.findFirst({ where: { lessonId }, orderBy: { order: "desc" } })
+
+  const result = await prisma.$transaction(async (tx) => {
+    const s = await tx.exampleSentence.create({
+      data: { sentence, translation, gloss: gloss || null, dictionaryEntryId: dictEntryId },
+    })
+    const i = await tx.lessonItem.create({
+      data: { lessonId, type: "SENTENCE", order: (last?.order ?? -1) + 1, sentenceId: s.id },
+    })
+    return { item: i, sentence: { id: s.id, sentence: s.sentence, translation: s.translation } }
+  })
+
+  return { data: result }
+}
+
+export async function createAndAddVocab(
+  lessonId: string,
+  languageId: string,
+  lemma: string,
+  gloss: string,
+  partOfSpeech?: string,
+) {
+  const userId = await requireAuth()
+  const lesson = await prisma.courseLesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, course: { select: { languageId: true } } },
+  })
+  if (!lesson) return { error: "Not found" }
+  if (lesson.course.languageId !== languageId) return { error: "Language mismatch" }
+  if (!(await canEditLanguage(languageId, userId))) return { error: "Not found" }
+
+  const last = await prisma.lessonItem.findFirst({ where: { lessonId }, orderBy: { order: "desc" } })
+
+  const result = await prisma.$transaction(async (tx) => {
+    const e = await tx.dictionaryEntry.create({
+      data: { lemma, gloss, partOfSpeech: partOfSpeech || null, languageId },
+    })
+    const i = await tx.lessonItem.create({
+      data: { lessonId, type: "VOCAB", order: (last?.order ?? -1) + 1, dictEntryId: e.id },
+    })
+    return {
+      item: i,
+      dictEntry: { id: e.id, lemma: e.lemma, gloss: e.gloss, partOfSpeech: e.partOfSpeech },
+    }
+  })
+
+  return { data: result }
+}
+
 export async function createLesson(courseId: string, title: string, description?: string, unitId?: string | null) {
   const userId = await requireAuth()
   if (!(await requireCourseEditAccess(courseId, userId))) return { error: "Not found" }

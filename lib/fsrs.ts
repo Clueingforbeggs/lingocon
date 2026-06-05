@@ -20,6 +20,20 @@ export const XP_TABLE = {
 export type CardTypeKey = keyof typeof XP_TABLE
 export type RatingKey = "AGAIN" | "HARD" | "GOOD" | "EASY"
 
+// Lesson XP economy — shared by server (authoritative) and client (display only).
+export const LESSON_XP = {
+  base:      10, // awarded for completing a lesson
+  perHeart:   5, // bonus per heart remaining
+  maxHearts:  3,
+  replay:     5, // reduced XP for replaying an already-completed lesson (once per day)
+} as const
+
+/** Authoritative lesson XP for a *first* completion given remaining hearts. */
+export function computeLessonXp(heartsLeft: number): number {
+  const hearts = Math.max(0, Math.min(LESSON_XP.maxHearts, Math.floor(heartsLeft)))
+  return LESSON_XP.base + LESSON_XP.perHeart * hearts
+}
+
 // ts-fsrs Rating enum values (Grade = Rating excluding Manual)
 export const RATING_MAP: Record<RatingKey, Grade> = {
   AGAIN: Rating.Again,

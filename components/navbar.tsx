@@ -27,6 +27,7 @@ import {
   Plus,
   Shield,
   GitBranch,
+  GraduationCap,
 } from "lucide-react"
 import { SearchBar } from "@/components/search/search-bar"
 import { cn } from "@/lib/utils"
@@ -57,6 +58,7 @@ interface NavbarProps {
 const mainNavItems = [
   { name: "Home", href: "/", icon: Home },
   { name: "Browse", href: "/browse", icon: Globe },
+  { name: "Learn", href: "/learn", icon: GraduationCap },
   { name: "Families", href: "/families", icon: GitBranch },
   { name: "Favorites", href: "/favorites", icon: Heart, requiresAuth: true },
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requiresAuth: true },

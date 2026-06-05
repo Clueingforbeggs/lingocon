@@ -38,11 +38,23 @@ export interface SentenceBuilderExercise {
   words: { id: string; text: string }[] // Scrambled word pool
 }
 
+/** Non-graded teaching card (grammar concept or reading reference). */
+export interface InfoExercise {
+  type: "INFO"
+  id: string
+  kind: "GRAMMAR" | "TEXT"
+  title: string
+  body: string
+  /** Optional deep-link to the full grammar page / text. */
+  href?: string
+}
+
 export type Exercise =
   | MultipleChoiceExercise
   | TranslateExercise
   | MatchPairsExercise
   | SentenceBuilderExercise
+  | InfoExercise
 
 // ─── Lesson Result ────────────────────────────────────────────────────────────
 

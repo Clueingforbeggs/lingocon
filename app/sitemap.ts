@@ -13,6 +13,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const staticPages: MetadataRoute.Sitemap = [
         { url: siteUrl, lastModified: now, changeFrequency: "weekly", priority: 1 },
         { url: `${siteUrl}/browse`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
+        { url: `${siteUrl}/learn`, lastModified: now, changeFrequency: "daily", priority: 0.85 },
+        { url: `${siteUrl}/learn/browse`, lastModified: now, changeFrequency: "daily", priority: 0.85 },
         { url: `${siteUrl}/families`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
         { url: `${siteUrl}/modules`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
         { url: `${siteUrl}/search`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
@@ -50,6 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                     paradigms: true,
                     articles: true,
                     texts: true,
+                    courses: { where: { visibility: "PUBLISHED" } },
                 },
             },
             grammarPages: {
@@ -110,6 +113,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
         if (c.texts > 0) {
             languagePages.push({ url: `${base}/texts`, lastModified: lang.updatedAt, changeFrequency: "weekly", priority: 0.6 });
+        }
+        if (c.courses > 0) {
+            languagePages.push({ url: `${siteUrl}/learn/${lang.slug}`, lastModified: lang.updatedAt, changeFrequency: "weekly", priority: 0.7 });
         }
 
         // Deep content links

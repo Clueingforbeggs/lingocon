@@ -931,6 +931,7 @@ model Course {
 
   language    Language         @relation(fields: [languageId], references: [id], onDelete: Cascade)
   author      User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  units       Unit[]
   lessons     CourseLesson[]
   enrollments Enrollment[]
 
@@ -940,22 +941,43 @@ model Course {
   @@map("courses")
 }
 
+// A section grouping lessons within a course (the "path" is units → lessons)
+model Unit {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  order       Int      @default(0)
+  courseId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course  Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons CourseLesson[]
+
+  @@index([courseId])
+  @@index([courseId, order])
+  @@map("course_units")
+}
+
 model CourseLesson {
   id          String       @id @default(cuid())
   title       String
   description String?      @db.Text
   order       Int          @default(0)
   courseId    String
+  unitId      String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   course      Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  unit        Unit?             @relation(fields: [unitId], references: [id], onDelete: SetNull)
   items       LessonItem[]
   studyCards  StudyCard[]
   completions LessonCompletion[]
 
   @@index([courseId])
   @@index([courseId, order])
+  @@index([unitId])
   @@map("course_lessons")
 }
 
@@ -1040,6 +1062,7 @@ model StudyCard {
   lesson        CourseLesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   reviews       CardReview[]
 
+  @@unique([enrollmentId, dictEntryId, cardType])
   @@index([enrollmentId])
   @@index([enrollmentId, due])
   @@index([enrollmentId, state])

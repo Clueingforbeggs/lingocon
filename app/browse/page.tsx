@@ -30,6 +30,15 @@ export const dynamic = "force-dynamic"
 
 type SortOption = "recent" | "updated" | "entries" | "name" | "likes"
 
+/** A sliding window of page numbers centered on the current page. */
+function pageWindow(current: number, total: number, size = 5): number[] {
+  const half = Math.floor(size / 2)
+  let start = Math.max(1, current - half)
+  const end = Math.min(total, start + size - 1)
+  start = Math.max(1, end - size + 1)
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+}
+
 async function getPublicLanguages(sortBy: SortOption = "recent", page: number = 1, query: string = "") {
   const pageSize = 20
   const skip = (page - 1) * pageSize
@@ -74,6 +83,7 @@ async function getPublicLanguages(sortBy: SortOption = "recent", page: number = 
         grammarPages: true,
         dictionaryEntries: true,
         favorites: true,
+        courses: { where: { visibility: "PUBLISHED" as const } },
       },
     },
   } as const
@@ -225,21 +235,18 @@ export default async function BrowsePage({
                 )}
 
                 <div className="flex items-center gap-1 mx-4">
-                  {[...Array(Math.min(totalPages, 5))].map((_, i) => {
-                    const pageNum = i + 1
-                    return (
-                      <Link key={pageNum} href={`/browse?sort=${sortBy}&page=${pageNum}${query ? `&q=${query}` : ""}`}>
-                        <Button
-                          variant={page === pageNum ? "default" : "ghost"}
-                          size="sm"
-                          className={page === pageNum ? "" : "text-muted-foreground"}
-                        >
-                          {pageNum}
-                        </Button>
-                      </Link>
-                    )
-                  })}
-                  {totalPages > 5 && (
+                  {pageWindow(page, totalPages).map((pageNum) => (
+                    <Link key={pageNum} href={`/browse?sort=${sortBy}&page=${pageNum}${query ? `&q=${query}` : ""}`}>
+                      <Button
+                        variant={page === pageNum ? "default" : "ghost"}
+                        size="sm"
+                        className={page === pageNum ? "" : "text-muted-foreground"}
+                      >
+                        {pageNum}
+                      </Button>
+                    </Link>
+                  ))}
+                  {pageWindow(page, totalPages).at(-1)! < totalPages && (
                     <span className="text-muted-foreground px-2">...</span>
                   )}
                 </div>

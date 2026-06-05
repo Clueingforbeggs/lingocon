@@ -6,8 +6,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, BookOpen, CheckCircle2, GraduationCap, ListChecks, Play, Users } from "lucide-react"
+import { ArrowLeft, BookOpen, CheckCircle2, GraduationCap, ListChecks, Play, Users, Lock } from "lucide-react"
 import { EnrollButton } from "../../enroll-button"
+import { buildLessonStatuses, orderLessonSequence, type LessonStatus } from "@/lib/learn-path"
 import { cn } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
@@ -18,6 +19,10 @@ async function getCourseData(courseId: string, userId: string | null) {
     include: {
       language: { select: { id: true, name: true, slug: true } },
       author:   { select: { id: true, name: true, image: true } },
+      units: {
+        orderBy: { order: "asc" },
+        select: { id: true, title: true, description: true, order: true },
+      },
       lessons: {
         orderBy: { order: "asc" },
         include: {
@@ -33,7 +38,6 @@ async function getCourseData(courseId: string, userId: string | null) {
           _count: { select: { items: true } },
         },
       },
-      _count: { select: { enrollments: true } },
     },
   })
 
@@ -54,7 +58,15 @@ async function getCourseData(courseId: string, userId: string | null) {
     : []
   const completedLessonIds = new Set(completions.map(c => c.lessonId))
 
-  return { course, enrollment, completedLessonIds }
+  // Learner count = distinct users who have completed at least one lesson here.
+  // (Enrollment is per-language, not per-course, so we derive course-level reach.)
+  const learnerGroups = await prisma.lessonCompletion.groupBy({
+    by: ["userId"],
+    where: { lesson: { courseId } },
+  })
+  const learnerCount = learnerGroups.length
+
+  return { course, enrollment, completedLessonIds, learnerCount }
 }
 
 export default async function CourseDetailPage({
@@ -70,9 +82,34 @@ export default async function CourseDetailPage({
   const data = await getCourseData(courseId, userId)
   if (!data) notFound()
 
-  const { course, enrollment, completedLessonIds } = data
+  const { course, enrollment, completedLessonIds, learnerCount } = data
   const totalItems = course.lessons.reduce((s, l) => s + l._count.items, 0)
   const completedCount = completedLessonIds.size
+
+  // Build the ordered path + per-lesson unlock status.
+  const pathInput = course.lessons.map((l) => ({
+    id: l.id,
+    order: l.order,
+    unitId: l.unitId,
+    hasVocab: l._count.items > 0,
+  }))
+  const statuses = buildLessonStatuses(pathInput, course.units, completedLessonIds)
+  const orderedLessons = orderLessonSequence(course.lessons, course.units)
+
+  // Group ordered lessons by unit for display (unit-less lessons trail).
+  const unitsById = new Map(course.units.map((u) => [u.id, u]))
+  const groups: { unit: (typeof course.units)[number] | null; lessons: typeof orderedLessons }[] = []
+  for (const lesson of orderedLessons) {
+    const unit = lesson.unitId ? unitsById.get(lesson.unitId) ?? null : null
+    const last = groups[groups.length - 1]
+    if (last && last.unit?.id === unit?.id) {
+      last.lessons.push(lesson)
+    } else {
+      groups.push({ unit, lessons: [lesson] })
+    }
+  }
+  const hasUnits = course.units.length > 0
+  let globalIndex = 0
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -104,7 +141,7 @@ export default async function CourseDetailPage({
             <div className="mt-3 flex flex-wrap gap-3">
               <InfoChip icon={<ListChecks className="h-3.5 w-3.5" />} label={`${course.lessons.length} lessons`} />
               <InfoChip icon={<BookOpen className="h-3.5 w-3.5" />} label={`${totalItems} items`} />
-              <InfoChip icon={<Users className="h-3.5 w-3.5" />} label={`${course._count.enrollments} learners`} />
+              <InfoChip icon={<Users className="h-3.5 w-3.5" />} label={`${learnerCount} learners`} />
             </div>
           </div>
           <div className="shrink-0">
@@ -140,84 +177,145 @@ export default async function CourseDetailPage({
           )}
         </div>
 
-        {course.lessons.map((lesson, i) => {
-          const isDone = completedLessonIds.has(lesson.id)
-          const hasVocab = lesson.items.some(item => item.type === "VOCAB")
-
-          return (
-            <Card key={lesson.id} className={cn(
-              "overflow-hidden transition-all duration-200",
-              isDone ? "border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/10" : "hover:border-primary/30"
-            )}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  {/* Number / done indicator */}
-                  <div className={cn(
-                    "h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold",
-                    isDone
-                      ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600"
-                      : "bg-primary/10 text-primary"
-                  )}>
-                    {isDone
-                      ? <CheckCircle2 className="h-5 w-5" />
-                      : i + 1}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base">{lesson.title}</CardTitle>
-                    {lesson.description && (
-                      <CardDescription className="text-xs">{lesson.description}</CardDescription>
-                    )}
-                  </div>
-
-                  {/* Start / Review button */}
-                  {enrollment && hasVocab ? (
-                    <Button
-                      asChild
-                      size="sm"
-                      variant={isDone ? "outline" : "default"}
-                      className="shrink-0 gap-1.5"
-                    >
-                      <Link href={`/learn/${slug}/lesson/${lesson.id}`}>
-                        <Play className="h-3.5 w-3.5" />
-                        {isDone ? "Review" : "Start"}
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Badge variant="secondary" className="shrink-0">
-                      {lesson._count.items} items
-                    </Badge>
-                  )}
+        {groups.map((group, gi) => (
+          <div key={group.unit?.id ?? `loose-${gi}`} className="space-y-3">
+            {hasUnits && (
+              <div className="flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 items-center rounded-full bg-primary/10 px-2.5 text-xs font-semibold text-primary">
+                    {group.unit ? `Unit ${gi + 1}` : "More"}
+                  </span>
+                  <h3 className="font-semibold">{group.unit?.title ?? "Additional lessons"}</h3>
                 </div>
-              </CardHeader>
+                <div className="h-px flex-1 bg-border/60" />
+              </div>
+            )}
+            {group.unit?.description && (
+              <p className="text-sm text-muted-foreground">{group.unit.description}</p>
+            )}
 
-              {lesson.items.length > 0 && (
-                <CardContent className="pt-0">
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {lesson.items.map(item => (
-                      <div key={item.id} className="flex items-center gap-2 rounded-lg px-3 py-2 bg-secondary/50 text-sm">
-                        <ItemTypeIcon type={item.type} />
-                        <span className="truncate">
-                          {item.type === "VOCAB" && item.dictEntry
-                            ? <><strong>{item.dictEntry.lemma}</strong> — {item.dictEntry.gloss}</>
-                            : item.type === "GRAMMAR" && item.grammarPage
-                            ? item.grammarPage.title
-                            : item.type === "TEXT" && item.text
-                            ? item.text.title
-                            : item.type === "SENTENCE" && item.sentence
-                            ? <em>{item.sentence.sentence}</em>
-                            : "Item"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-          )
-        })}
+            {group.lessons.map((lesson) => {
+              const number = ++globalIndex
+              const status = statuses.get(lesson.id) ?? "open"
+              return (
+                <LessonRow
+                  key={lesson.id}
+                  lesson={lesson}
+                  number={number}
+                  status={status}
+                  enrolled={Boolean(enrollment)}
+                  slug={slug}
+                />
+              )
+            })}
+          </div>
+        ))}
       </div>
     </div>
+  )
+}
+
+function LessonRow({
+  lesson,
+  number,
+  status,
+  enrolled,
+  slug,
+}: {
+  lesson: {
+    id: string
+    title: string
+    description: string | null
+    items: { id: string; type: string; dictEntry: { lemma: string; gloss: string } | null; grammarPage: { title: string } | null; text: { title: string } | null; sentence: { sentence: string } | null }[]
+    _count: { items: number }
+  }
+  number: number
+  status: LessonStatus
+  enrolled: boolean
+  slug: string
+}) {
+  const isDone = status === "done"
+  const isLocked = status === "locked"
+  const playable = status === "done" || status === "current"
+
+  return (
+    <Card
+      className={cn(
+        "overflow-hidden transition-all duration-200",
+        isDone
+          ? "border-emerald-200 bg-emerald-50/30 dark:border-emerald-800/50 dark:bg-emerald-950/10"
+          : isLocked
+            ? "opacity-70"
+            : "hover:border-primary/30",
+      )}
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold",
+              isDone
+                ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50"
+                : isLocked
+                  ? "bg-secondary text-muted-foreground"
+                  : "bg-primary/10 text-primary",
+            )}
+          >
+            {isDone ? <CheckCircle2 className="h-5 w-5" /> : isLocked ? <Lock className="h-4 w-4" /> : number}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <CardTitle className="text-base">{lesson.title}</CardTitle>
+            {lesson.description && <CardDescription className="text-xs">{lesson.description}</CardDescription>}
+          </div>
+
+          {enrolled && playable ? (
+            <Button asChild size="sm" variant={isDone ? "outline" : "default"} className="shrink-0 gap-1.5">
+              <Link href={`/learn/${slug}/lesson/${lesson.id}`}>
+                <Play className="h-3.5 w-3.5" />
+                {isDone ? "Review" : "Start"}
+              </Link>
+            </Button>
+          ) : isLocked ? (
+            <Badge variant="secondary" className="shrink-0 gap-1">
+              <Lock className="h-3 w-3" />
+              Locked
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="shrink-0">
+              {lesson._count.items} items
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+
+      {!isLocked && lesson.items.length > 0 && (
+        <CardContent className="pt-0">
+          <div className="max-h-48 space-y-1.5 overflow-y-auto">
+            {lesson.items.map((item) => (
+              <div key={item.id} className="flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2 text-sm">
+                <ItemTypeIcon type={item.type} />
+                <span className="truncate">
+                  {item.type === "VOCAB" && item.dictEntry ? (
+                    <>
+                      <strong>{item.dictEntry.lemma}</strong> — {item.dictEntry.gloss}
+                    </>
+                  ) : item.type === "GRAMMAR" && item.grammarPage ? (
+                    item.grammarPage.title
+                  ) : item.type === "TEXT" && item.text ? (
+                    item.text.title
+                  ) : item.type === "SENTENCE" && item.sentence ? (
+                    <em>{item.sentence.sentence}</em>
+                  ) : (
+                    "Item"
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      )}
+    </Card>
   )
 }
 

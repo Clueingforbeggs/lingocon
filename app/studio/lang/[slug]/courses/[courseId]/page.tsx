@@ -27,6 +27,10 @@ async function getCourseEditorData(slug: string, courseId: string, userId: strin
   const course = await prisma.course.findFirst({
     where: { id: courseId, languageId: language.id },
     include: {
+      units: {
+        orderBy: { order: "asc" },
+        select: { id: true, title: true, description: true, order: true },
+      },
       lessons: {
         orderBy: { order: "asc" },
         include: {
@@ -65,7 +69,14 @@ async function getCourseEditorData(slug: string, courseId: string, userId: strin
     orderBy: { title: "asc" },
   })
 
-  return { language, course, dictEntries, grammarPages, texts }
+  const sentences = await prisma.exampleSentence.findMany({
+    where: { entry: { languageId: language.id } },
+    select: { id: true, sentence: true, translation: true },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  })
+
+  return { language, course, dictEntries, grammarPages, texts, sentences }
 }
 
 export default async function CourseEditorPage({
@@ -82,7 +93,7 @@ export default async function CourseEditorPage({
   const data = await getCourseEditorData(slug, courseId, userId)
   if (!data) notFound()
 
-  const { language, course, dictEntries, grammarPages, texts } = data
+  const { language, course, dictEntries, grammarPages, texts, sentences } = data
 
   const user = session?.user ? {
     id: session.user.id!,
@@ -112,6 +123,7 @@ export default async function CourseEditorPage({
           dictEntries={dictEntries}
           grammarPages={grammarPages}
           texts={texts}
+          sentences={sentences}
           slug={slug}
         />
       </main>

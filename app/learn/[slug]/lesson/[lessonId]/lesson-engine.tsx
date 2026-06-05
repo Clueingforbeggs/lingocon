@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button"
 import { completeLesson } from "@/app/actions/learn"
 import {
   X, Heart, HeartCrack, Trophy, ArrowLeft, Sparkles,
-  CheckCircle2, XCircle, RotateCcw, Zap,
+  CheckCircle2, XCircle, RotateCcw, Zap, BookOpen, FileText, ExternalLink, Target,
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import confetti from "canvas-confetti"
-import type { Exercise, MultipleChoiceExercise, TranslateExercise, MatchPairsExercise, SentenceBuilderExercise } from "@/types/lesson"
+import type { Exercise, MultipleChoiceExercise, TranslateExercise, MatchPairsExercise, SentenceBuilderExercise, InfoExercise } from "@/types/lesson"
 
 // ─── XP config ────────────────────────────────────────────────────────────────
 
@@ -72,11 +72,23 @@ export function LessonEngine({
   const [feedback, setFeedback]   = useState<FeedbackState>({ status: "answering" })
   const [screen, setScreen]       = useState<Screen>("lesson")
   const [correctCount, setCorrect] = useState(0)
+  const [wrongCount, setWrong]    = useState(0)
   const [selected, setSelected]   = useState<string | null>(null)  // MC selected option id
   const [typedAnswer, setTyped]   = useState("")
   const [selectedBuilderWords, setSelectedBuilderWords] = useState<string[]>([])
   const [saving, setSaving]       = useState(false)
+  const [awardedXp, setAwardedXp] = useState<number | null>(null)
+  const [mistakes, setMistakes]   = useState<Exercise[]>([])
+  const [reviewMode, setReviewMode] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const baseExerciseId = (id: string) => id.replace(/-(retry|review).*$/, "")
+  const recordMistake = useCallback((ex: Exercise) => {
+    const base = baseExerciseId(ex.id)
+    setMistakes(prev =>
+      prev.some(m => baseExerciseId(m.id) === base) ? prev : [...prev, { ...ex, id: `${base}-review` }],
+    )
+  }, [])
 
   const current = queue[idx]
   const progress = exercises.length > 0 ? idx / (queue.length) : 1
@@ -118,6 +130,8 @@ export function LessonEngine({
       setCorrect(c => c + 1)
       setFeedback({ status: "correct", correctText, hint })
     } else {
+      setWrong(w => w + 1)
+      recordMistake(current)
       const newHearts = hearts - 1
       setHearts(newHearts)
       setFeedback({ status: "wrong", correctText, hint })
@@ -126,7 +140,21 @@ export function LessonEngine({
         setTimeout(() => setScreen("failed"), 1400)
       }
     }
-  }, [current, feedback.status, selected, typedAnswer, hearts, selectedBuilderWords])
+  }, [current, feedback.status, selected, typedAnswer, hearts, selectedBuilderWords, recordMistake])
+
+  // ── Match-pairs wrong match — costs a heart, may end the lesson ────────────
+
+  const handleMatchWrong = useCallback(() => {
+    setWrong(w => w + 1)
+    setHearts(h => {
+      const next = Math.max(0, h - 1)
+      if (next === 0) {
+        // Let the shake animation play, then show the fail screen.
+        setTimeout(() => setScreen("failed"), 550)
+      }
+      return next
+    })
+  }, [])
 
   // ── Advance to next exercise ───────────────────────────────────────────────
 
@@ -142,12 +170,21 @@ export function LessonEngine({
 
     const nextIdx = idx + 1
     if (nextIdx >= queue.length || (feedback.status === "wrong" && hearts === 0)) {
-      // All done — save completion
-      setSaving(true)
-      const xpEarned = BASE_LESSON_XP + XP_PER_HEART * Math.max(0, hearts)
-      try {
-        await completeLesson(lessonId, xpEarned, hearts)
+      // Reviewing past mistakes never re-awards XP or re-saves completion.
+      if (reviewMode) {
         setScreen("complete")
+        return
+      }
+      // All done — save completion. XP is computed and returned by the server.
+      setSaving(true)
+      try {
+        const result = await completeLesson(lessonId, hearts)
+        if (result?.error) {
+          toast.error(result.error)
+        } else {
+          setAwardedXp(result?.data?.xpEarned ?? 0)
+          setScreen("complete")
+        }
       } catch {
         toast.error("Failed to save progress")
       } finally {
@@ -158,7 +195,25 @@ export function LessonEngine({
 
     setIdx(nextIdx)
     setFeedback({ status: "answering" })
-  }, [feedback.status, hearts, idx, lessonId, queue])
+  }, [feedback.status, hearts, idx, lessonId, queue, reviewMode])
+
+  // ── Review just the mistakes from this session ─────────────────────────────
+
+  const startReview = useCallback(() => {
+    if (mistakes.length === 0) return
+    setQueue(mistakes)
+    setMistakes([])
+    setIdx(0)
+    setHearts(MAX_HEARTS)
+    setCorrect(0)
+    setWrong(0)
+    setReviewMode(true)
+    setFeedback({ status: "answering" })
+    setSelected(null)
+    setTyped("")
+    setSelectedBuilderWords([])
+    setScreen("lesson")
+  }, [mistakes])
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
 
@@ -181,6 +236,10 @@ export function LessonEngine({
           e.preventDefault()
           if (typedAnswer.trim()) checkAnswer()
         }
+        if (current?.type === "INFO" && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault()
+          advance()
+        }
       } else {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault()
@@ -195,9 +254,10 @@ export function LessonEngine({
   // ── Screens ───────────────────────────────────────────────────────────────
 
   if (screen === "complete") {
-    const xpEarned = BASE_LESSON_XP + XP_PER_HEART * Math.max(0, hearts)
-    const accuracy = exercises.length > 0
-      ? Math.round((correctCount / exercises.length) * 100)
+    const xpEarned = awardedXp ?? (BASE_LESSON_XP + XP_PER_HEART * Math.max(0, hearts))
+    const totalAttempts = correctCount + wrongCount
+    const accuracy = totalAttempts > 0
+      ? Math.round((correctCount / totalAttempts) * 100)
       : 0
     return (
       <CompleteScreen
@@ -209,6 +269,9 @@ export function LessonEngine({
         languageSlug={languageSlug}
         languageName={languageName}
         courseId={courseId}
+        reviewMode={reviewMode}
+        mistakeCount={mistakes.length}
+        onReviewMistakes={startReview}
       />
     )
   }
@@ -269,13 +332,21 @@ export function LessonEngine({
         {current.type === "MATCH_PAIRS" ? (
           <MatchPairsCard
             exercise={current}
+            onWrong={handleMatchWrong}
             onComplete={() => {
+              if (hearts === 0) return
               const nextIdx = idx + 1
               if (nextIdx >= queue.length) {
-                const xpEarned = BASE_LESSON_XP + XP_PER_HEART * hearts
                 setSaving(true)
-                completeLesson(lessonId, xpEarned, hearts)
-                  .then(() => setScreen("complete"))
+                completeLesson(lessonId, hearts)
+                  .then((result) => {
+                    if (result?.error) {
+                      toast.error(result.error)
+                      return
+                    }
+                    setAwardedXp(result?.data?.xpEarned ?? 0)
+                    setScreen("complete")
+                  })
                   .catch(() => toast.error("Failed to save progress"))
                   .finally(() => setSaving(false))
               } else {
@@ -286,6 +357,9 @@ export function LessonEngine({
           />
         ) : (
           <div className="space-y-8">
+            {current.type === "INFO" && (
+              <InfoCard exercise={current} />
+            )}
             {current.type === "MULTIPLE_CHOICE" && (
               <MultipleChoiceCard
                 exercise={current}
@@ -326,14 +400,25 @@ export function LessonEngine({
         )}>
           <div className="container mx-auto max-w-2xl px-4 py-4">
             {feedback.status === "answering" ? (
-              <Button
-                size="lg"
-                className="w-full h-12 text-base font-semibold"
-                disabled={!canCheck}
-                onClick={checkAnswer}
-              >
-                Check
-              </Button>
+              current.type === "INFO" ? (
+                <Button
+                  size="lg"
+                  className="w-full h-12 text-base font-semibold"
+                  onClick={advance}
+                  disabled={saving}
+                >
+                  Continue
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  className="w-full h-12 text-base font-semibold"
+                  disabled={!canCheck}
+                  onClick={checkAnswer}
+                >
+                  Check
+                </Button>
+              )
             ) : (
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
@@ -491,13 +576,57 @@ function TranslateCard({
   )
 }
 
+// ─── Info / Concept Card ──────────────────────────────────────────────────────
+
+function InfoCard({ exercise }: { exercise: InfoExercise }) {
+  const isGrammar = exercise.kind === "GRAMMAR"
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <div className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-xl",
+          isGrammar ? "bg-amber-500/10 text-amber-600" : "bg-blue-500/10 text-blue-600",
+        )}>
+          {isGrammar ? <BookOpen className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+        </div>
+        <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+          {isGrammar ? "Grammar" : "Reading"}
+        </span>
+      </div>
+
+      <h2 className="text-3xl font-bold tracking-tight">{exercise.title}</h2>
+
+      {exercise.body ? (
+        <div className="rounded-2xl border border-border bg-card p-5 text-base leading-relaxed text-muted-foreground whitespace-pre-line">
+          {exercise.body}
+        </div>
+      ) : (
+        <p className="text-muted-foreground">Open the full page to study this section.</p>
+      )}
+
+      {exercise.href && (
+        <Link
+          href={exercise.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+        >
+          <ExternalLink className="h-4 w-4" />
+          {isGrammar ? "Read full grammar page" : "Open full text"}
+        </Link>
+      )}
+    </div>
+  )
+}
+
 // ─── Match Pairs Card ─────────────────────────────────────────────────────────
 
 function MatchPairsCard({
-  exercise, onComplete,
+  exercise, onComplete, onWrong,
 }: {
   exercise: MatchPairsExercise
   onComplete: () => void
+  onWrong: () => void
 }) {
   const [selectedLeft, setSelectedLeft]   = useState<string | null>(null)
   const [selectedRight, setSelectedRight] = useState<string | null>(null)
@@ -524,7 +653,8 @@ function MatchPairsCard({
       setSelectedLeft(null)
       setSelectedRight(null)
     } else {
-      // Wrong — shake both then clear
+      // Wrong — costs a heart, shake both, then clear
+      onWrong()
       setShaking(leftId)
       setTimeout(() => {
         setShaking(null)
@@ -696,6 +826,7 @@ function SentenceBuilderCard({
 
 function CompleteScreen({
   lessonTitle, xpEarned, heartsLeft, maxHearts, accuracy, languageSlug, languageName, courseId,
+  reviewMode, mistakeCount, onReviewMistakes,
 }: {
   lessonTitle: string
   xpEarned: number
@@ -705,6 +836,9 @@ function CompleteScreen({
   languageSlug: string
   languageName: string
   courseId: string
+  reviewMode: boolean
+  mistakeCount: number
+  onReviewMistakes: () => void
 }) {
   const isPerfect = heartsLeft === maxHearts
 
@@ -755,7 +889,7 @@ function CompleteScreen({
 
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
-          {isPerfect ? "Flawless!" : accuracy >= 70 ? "Lesson Complete!" : "Well done!"}
+          {reviewMode ? "Mistakes reviewed!" : isPerfect ? "Flawless!" : accuracy >= 70 ? "Lesson Complete!" : "Well done!"}
         </h1>
         <p className="text-muted-foreground mt-1">{lessonTitle}</p>
       </div>
@@ -782,7 +916,13 @@ function CompleteScreen({
       </div>
 
       <div className="flex flex-col gap-3 w-full">
-        <Button asChild size="lg" className="h-12 gap-2">
+        {mistakeCount > 0 && (
+          <Button size="lg" className="h-12 gap-2 bg-amber-500 hover:bg-amber-600 text-white" onClick={onReviewMistakes}>
+            <Target className="h-4 w-4" />
+            Review {mistakeCount} mistake{mistakeCount === 1 ? "" : "s"}
+          </Button>
+        )}
+        <Button asChild size="lg" variant={mistakeCount > 0 ? "outline" : "default"} className="h-12 gap-2">
           <Link href={`/learn/${languageSlug}/courses/${courseId}`}>
             <ArrowLeft className="h-4 w-4" />
             Back to Course

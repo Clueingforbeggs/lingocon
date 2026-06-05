@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { submitReview, updateStreak, awardPerfectSession } from "@/app/actions/learn"
+import { submitReview, awardPerfectSession } from "@/app/actions/learn"
 import { Flame, Trophy, ArrowLeft, X, Sparkles, ChevronRight, RotateCcw, BookOpen, Zap, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -66,11 +66,13 @@ export function StudySession({ cards, languageId, languageSlug, languageName, to
 
   const advance = useCallback((nextQueue: StudyCard[], nextIdx: number, isPerfect: boolean) => {
     if (nextIdx >= nextQueue.length) {
-      // Session complete — update streak + award perfect bonus if warranted
-      updateStreak(languageId).catch(() => {})
+      // Session complete — streak is updated server-side per review. Award the
+      // once-per-day perfect bonus only if the server actually grants it.
       if (isPerfect) {
         awardPerfectSession(languageId)
-          .then(() => toast.success("+25 XP — Perfect session bonus!"))
+          .then((res) => {
+            if (res?.data?.awarded) toast.success(`+${res.data.awarded} XP — Perfect session bonus!`)
+          })
           .catch(() => {})
       }
       setScreen("summary")

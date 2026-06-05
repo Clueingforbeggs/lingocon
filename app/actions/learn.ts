@@ -1,8 +1,10 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { requireAuth } from "@/lib/auth-helpers"
-import { scheduleReview, createNewCard, type CardTypeKey, type RatingKey, type FSRSCardState } from "@/lib/fsrs"
+import { Prisma } from "@prisma/client"
+import { requireAuth, getUserId, canEditLanguage, canViewLanguage } from "@/lib/auth-helpers"
+import { scheduleReview, createNewCard, computeLessonXp, LESSON_XP, type CardTypeKey, type RatingKey, type FSRSCardState } from "@/lib/fsrs"
+import { nextStreak } from "@/lib/streak"
 import { State } from "ts-fsrs"
 import { revalidatePath } from "next/cache"
 
@@ -10,6 +12,19 @@ import { revalidatePath } from "next/cache"
 
 export async function enrollInLanguage(languageId: string, courseId?: string) {
   const userId = await requireAuth()
+
+  // Only allow enrolling in languages the user is allowed to see.
+  const canView = await canViewLanguage(languageId, userId)
+  if (!canView) return { error: "Language not found" }
+
+  // If a course is specified, it must belong to this language and be published.
+  if (courseId) {
+    const course = await prisma.course.findFirst({
+      where: { id: courseId, languageId, visibility: "PUBLISHED" },
+      select: { id: true },
+    })
+    if (!course) return { error: "Course not found" }
+  }
 
   const existing = await prisma.enrollment.findUnique({
     where: { userId_languageId: { userId, languageId } },
@@ -169,7 +184,15 @@ export async function submitReview(
     card.cardType as CardTypeKey,
   )
 
-  const [updatedCard] = await prisma.$transaction([
+  const now = new Date()
+  const languageId = card.enrollment.languageId
+
+  // Advance the daily streak using the *previous* lastStudied value, before we
+  // overwrite it below. Idempotent within the same day.
+  const streak = nextStreak(card.enrollment.lastStudied, card.enrollment.streak, now)
+  const totalXp = xp + streak.bonusXp
+
+  const ops: Prisma.PrismaPromise<unknown>[] = [
     prisma.studyCard.update({
       where: { id: cardId },
       data: {
@@ -181,8 +204,8 @@ export async function submitReview(
         reps:         next.reps,
         lapses:       next.lapses,
         state:        fsrsStateToDb(next.state),
-        lastReview:   new Date(),
-        updatedAt:    new Date(),
+        lastReview:   now,
+        updatedAt:    now,
       },
     }),
     prisma.cardReview.create({
@@ -191,87 +214,53 @@ export async function submitReview(
     prisma.enrollment.update({
       where: { id: card.enrollmentId },
       data: {
-        xp:         { increment: xp },
-        lastStudied: new Date(),
+        xp:          { increment: totalXp },
+        streak:      streak.streak,
+        lastStudied: now,
       },
     }),
     prisma.xPEvent.create({
-      data: {
-        userId,
-        languageId: card.enrollment.languageId,
-        amount:     xp,
-        reason:     "review",
-      },
+      data: { userId, languageId, amount: xp, reason: "review" },
     }),
-  ])
+  ]
 
-  return { data: { card: updatedCard, xpEarned: xp } }
-}
-
-// ─── Streak Update ────────────────────────────────────────────────────────────
-
-export async function updateStreak(languageId: string) {
-  const userId = await requireAuth()
-
-  const enrollment = await prisma.enrollment.findUnique({
-    where: { userId_languageId: { userId, languageId } },
-  })
-  if (!enrollment) return
-
-  const now = new Date()
-  const lastStudied = enrollment.lastStudied
-
-  if (!lastStudied) {
-    await prisma.enrollment.update({
-      where: { id: enrollment.id },
-      data: { streak: 1, lastStudied: now },
-    })
-    return
+  if (streak.bonusXp > 0) {
+    ops.push(
+      prisma.xPEvent.create({
+        data: { userId, languageId, amount: streak.bonusXp, reason: "streak_bonus" },
+      })
+    )
   }
 
-  const daysSinceLast = Math.floor(
-    (now.getTime() - lastStudied.getTime()) / (1000 * 60 * 60 * 24)
-  )
+  const [updatedCard] = await prisma.$transaction(ops)
 
-  if (daysSinceLast === 0) return // same day
-  if (daysSinceLast === 1) {
-    await prisma.enrollment.update({
-      where: { id: enrollment.id },
-      data: { streak: { increment: 1 }, lastStudied: now },
-    })
-    // Streak bonus XP every 7 days
-    if ((enrollment.streak + 1) % 7 === 0) {
-      await prisma.xPEvent.create({
-        data: { userId, languageId, amount: 50, reason: "streak_bonus" },
-      })
-      await prisma.enrollment.update({
-        where: { id: enrollment.id },
-        data: { xp: { increment: 50 } },
-      })
-    }
-  } else {
-    // Streak broken
-    await prisma.enrollment.update({
-      where: { id: enrollment.id },
-      data: { streak: 1, lastStudied: now },
-    })
+  return {
+    data: {
+      card: updatedCard,
+      xpEarned: xp,
+      streak: streak.streak,
+      streakBonusXp: streak.bonusXp,
+    },
   }
 }
 
 // ─── Lesson Completion ───────────────────────────────────────────────────────
 
-export async function completeLesson(
-  lessonId: string,
-  xpEarned: number,
-  heartsLeft: number,
-) {
+export async function completeLesson(lessonId: string, heartsLeft: number) {
   const userId = await requireAuth()
 
   const lesson = await prisma.courseLesson.findUnique({
     where: { id: lessonId },
-    select: { course: { select: { languageId: true } } },
+    select: {
+      course: { select: { languageId: true, visibility: true } },
+    },
   })
   if (!lesson) return { error: "Lesson not found" }
+
+  // Only published courses can be completed (drafts/archived are not learnable).
+  if (lesson.course.visibility !== "PUBLISHED") {
+    return { error: "Course not available" }
+  }
 
   const { languageId } = lesson.course
 
@@ -280,27 +269,67 @@ export async function completeLesson(
   })
   if (!enrollment) return { error: "Not enrolled" }
 
-  await prisma.$transaction([
+  const now = new Date()
+
+  // XP is computed server-side. First completion earns the full reward; replays
+  // earn a small bounded "practice" XP, at most once per day, to prevent farming.
+  const existing = await prisma.lessonCompletion.findUnique({
+    where: { userId_lessonId: { userId, lessonId } },
+    select: { completedAt: true },
+  })
+
+  const fullXp = computeLessonXp(heartsLeft)
+  let xpEarned: number
+  if (!existing) {
+    xpEarned = fullXp
+  } else {
+    const { isSameUtcDay } = await import("@/lib/streak")
+    xpEarned = isSameUtcDay(existing.completedAt, now) ? 0 : LESSON_XP.replay
+  }
+
+  const hearts = Math.max(0, Math.min(LESSON_XP.maxHearts, Math.floor(heartsLeft)))
+
+  // Advance streak from the previous study timestamp before overwriting it.
+  const streak = nextStreak(enrollment.lastStudied, enrollment.streak, now)
+  const enrollmentXp = xpEarned + streak.bonusXp
+
+  const ops: Prisma.PrismaPromise<unknown>[] = [
     prisma.lessonCompletion.upsert({
       where: { userId_lessonId: { userId, lessonId } },
-      update: { xpEarned, heartsLeft, completedAt: new Date() },
-      create: { userId, lessonId, xpEarned, heartsLeft },
+      update: { heartsLeft: hearts, completedAt: now, ...(xpEarned > 0 ? { xpEarned } : {}) },
+      create: { userId, lessonId, xpEarned, heartsLeft: hearts },
     }),
     prisma.enrollment.update({
       where: { id: enrollment.id },
-      data: { xp: { increment: xpEarned }, lastStudied: new Date() },
+      data: { xp: { increment: enrollmentXp }, streak: streak.streak, lastStudied: now },
     }),
-    prisma.xPEvent.create({
-      data: { userId, languageId, amount: xpEarned, reason: "lesson_complete" },
-    }),
-  ])
+  ]
+
+  if (xpEarned > 0) {
+    ops.push(
+      prisma.xPEvent.create({
+        data: { userId, languageId, amount: xpEarned, reason: "lesson_complete" },
+      })
+    )
+  }
+  if (streak.bonusXp > 0) {
+    ops.push(
+      prisma.xPEvent.create({
+        data: { userId, languageId, amount: streak.bonusXp, reason: "streak_bonus" },
+      })
+    )
+  }
+
+  await prisma.$transaction(ops)
 
   const slug = await getSlugForLanguage(languageId)
   revalidatePath(`/learn/${slug}`)
-  return { data: { xpEarned } }
+  return { data: { xpEarned, streak: streak.streak, streakBonusXp: streak.bonusXp } }
 }
 
 // ─── Perfect Session Bonus ────────────────────────────────────────────────────
+
+const PERFECT_BONUS = 25
 
 export async function awardPerfectSession(languageId: string) {
   const userId = await requireAuth()
@@ -308,9 +337,26 @@ export async function awardPerfectSession(languageId: string) {
   const enrollment = await prisma.enrollment.findUnique({
     where: { userId_languageId: { userId, languageId } },
   })
-  if (!enrollment) return
+  if (!enrollment) return { data: { awarded: 0 } }
 
-  const PERFECT_BONUS = 25
+  // Idempotent: at most one perfect-session bonus per language per UTC day, and
+  // only when the user actually reviewed cards today.
+  const startOfDay = new Date()
+  startOfDay.setUTCHours(0, 0, 0, 0)
+
+  const [alreadyAwarded, reviewedToday] = await Promise.all([
+    prisma.xPEvent.findFirst({
+      where: { userId, languageId, reason: "perfect_session", createdAt: { gte: startOfDay } },
+      select: { id: true },
+    }),
+    prisma.cardReview.findFirst({
+      where: { card: { enrollmentId: enrollment.id }, reviewedAt: { gte: startOfDay } },
+      select: { id: true },
+    }),
+  ])
+
+  if (alreadyAwarded || !reviewedToday) return { data: { awarded: 0 } }
+
   await prisma.$transaction([
     prisma.enrollment.update({
       where: { id: enrollment.id },
@@ -320,6 +366,8 @@ export async function awardPerfectSession(languageId: string) {
       data: { userId, languageId, amount: PERFECT_BONUS, reason: "perfect_session" },
     }),
   ])
+
+  return { data: { awarded: PERFECT_BONUS } }
 }
 
 // ─── Courses ──────────────────────────────────────────────────────────────────
@@ -349,13 +397,36 @@ export async function getCourse(courseId: string) {
       },
     },
   })
+  if (!course) return { error: "Not found" }
+
+  // Drafts/archived courses are only visible to users who can edit the language.
+  if (course.visibility !== "PUBLISHED") {
+    const userId = await getUserId()
+    if (!(await canEditLanguage(course.languageId, userId))) {
+      return { error: "Not found" }
+    }
+  }
   return { data: course }
 }
 
 // ─── Studio: Course Management ────────────────────────────────────────────────
 
+/** Resolve a course's languageId and confirm the caller may edit that language. */
+async function requireCourseEditAccess(courseId: string, userId: string) {
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { id: true, languageId: true },
+  })
+  if (!course) return null
+  if (!(await canEditLanguage(course.languageId, userId))) return null
+  return course
+}
+
 export async function createCourse(languageId: string, title: string, description?: string) {
   const userId = await requireAuth()
+  if (!(await canEditLanguage(languageId, userId))) {
+    return { error: "You don't have permission to create courses for this language" }
+  }
 
   const course = await prisma.course.create({
     data: { title, description, languageId, authorId: userId },
@@ -369,20 +440,22 @@ export async function updateCourse(
   data: { title?: string; description?: string; visibility?: "DRAFT" | "PUBLISHED" | "ARCHIVED"; coverImage?: string }
 ) {
   const userId = await requireAuth()
-  const course = await prisma.course.findFirst({
-    where: { id: courseId, authorId: userId },
-  })
-  if (!course) return { error: "Not found" }
+  if (!(await requireCourseEditAccess(courseId, userId))) return { error: "Not found" }
 
   const updated = await prisma.course.update({ where: { id: courseId }, data })
   revalidatePath(`/studio/lang`)
   return { data: updated }
 }
 
-export async function createLesson(courseId: string, title: string, description?: string) {
+export async function createLesson(courseId: string, title: string, description?: string, unitId?: string | null) {
   const userId = await requireAuth()
-  const course = await prisma.course.findFirst({ where: { id: courseId, authorId: userId } })
-  if (!course) return { error: "Not found" }
+  if (!(await requireCourseEditAccess(courseId, userId))) return { error: "Not found" }
+
+  // A provided unit must belong to this course.
+  if (unitId) {
+    const unit = await prisma.unit.findFirst({ where: { id: unitId, courseId }, select: { id: true } })
+    if (!unit) return { error: "Invalid unit" }
+  }
 
   const lastLesson = await prisma.courseLesson.findFirst({
     where: { courseId },
@@ -390,10 +463,135 @@ export async function createLesson(courseId: string, title: string, description?
   })
 
   const lesson = await prisma.courseLesson.create({
-    data: { title, description, courseId, order: (lastLesson?.order ?? -1) + 1 },
+    data: { title, description, courseId, unitId: unitId ?? null, order: (lastLesson?.order ?? -1) + 1 },
   })
   revalidatePath(`/studio/lang`)
   return { data: lesson }
+}
+
+// ─── Studio: Units ─────────────────────────────────────────────────────────────
+
+/** Create a lesson directly inside a unit (resolves the course from the unit). */
+export async function createLessonInUnit(unitId: string, title: string, description?: string) {
+  const userId = await requireAuth()
+  const unit = await prisma.unit.findUnique({
+    where: { id: unitId },
+    select: { id: true, courseId: true, course: { select: { languageId: true } } },
+  })
+  if (!unit) return { error: "Not found" }
+  if (!(await canEditLanguage(unit.course.languageId, userId))) return { error: "Not found" }
+
+  const lastLesson = await prisma.courseLesson.findFirst({
+    where: { courseId: unit.courseId },
+    orderBy: { order: "desc" },
+  })
+
+  const lesson = await prisma.courseLesson.create({
+    data: { title, description, courseId: unit.courseId, unitId, order: (lastLesson?.order ?? -1) + 1 },
+  })
+  revalidatePath(`/studio/lang`)
+  return { data: lesson }
+}
+
+/** Persist a new lesson order within a course (ids may be a single group). */
+export async function reorderLessons(courseId: string, orderedLessonIds: string[]) {
+  const userId = await requireAuth()
+  if (!(await requireCourseEditAccess(courseId, userId))) return { error: "Not found" }
+
+  const lessons = await prisma.courseLesson.findMany({ where: { courseId }, select: { id: true } })
+  const valid = new Set(lessons.map((l) => l.id))
+  if (!orderedLessonIds.every((id) => valid.has(id))) return { error: "Invalid lessons" }
+
+  await prisma.$transaction(
+    orderedLessonIds.map((id, i) =>
+      prisma.courseLesson.update({ where: { id }, data: { order: i } }),
+    ),
+  )
+  revalidatePath(`/studio/lang`)
+  return { data: true }
+}
+
+/** Persist a new unit order within a course. */
+export async function reorderUnits(courseId: string, orderedUnitIds: string[]) {
+  const userId = await requireAuth()
+  if (!(await requireCourseEditAccess(courseId, userId))) return { error: "Not found" }
+
+  const units = await prisma.unit.findMany({ where: { courseId }, select: { id: true } })
+  const valid = new Set(units.map((u) => u.id))
+  if (!orderedUnitIds.every((id) => valid.has(id))) return { error: "Invalid units" }
+
+  await prisma.$transaction(
+    orderedUnitIds.map((id, i) => prisma.unit.update({ where: { id }, data: { order: i } })),
+  )
+  revalidatePath(`/studio/lang`)
+  return { data: true }
+}
+
+export async function createUnit(courseId: string, title: string, description?: string) {
+  const userId = await requireAuth()
+  if (!(await requireCourseEditAccess(courseId, userId))) return { error: "Not found" }
+
+  const last = await prisma.unit.findFirst({ where: { courseId }, orderBy: { order: "desc" } })
+  const unit = await prisma.unit.create({
+    data: { courseId, title, description, order: (last?.order ?? -1) + 1 },
+  })
+  revalidatePath(`/studio/lang`)
+  return { data: unit }
+}
+
+export async function updateUnit(unitId: string, data: { title?: string; description?: string }) {
+  const userId = await requireAuth()
+  if (!(await requireUnitEditAccess(unitId, userId))) return { error: "Not found" }
+
+  const updated = await prisma.unit.update({ where: { id: unitId }, data })
+  revalidatePath(`/studio/lang`)
+  return { data: updated }
+}
+
+export async function deleteUnit(unitId: string) {
+  const userId = await requireAuth()
+  if (!(await requireUnitEditAccess(unitId, userId))) return { error: "Not found" }
+
+  // Lessons keep existing; their unitId is set null via onDelete: SetNull.
+  await prisma.unit.delete({ where: { id: unitId } })
+  revalidatePath(`/studio/lang`)
+  return { data: true }
+}
+
+/** Assign (or unassign with null) a lesson to a unit within the same course. */
+export async function setLessonUnit(lessonId: string, unitId: string | null) {
+  const userId = await requireAuth()
+  const lesson = await prisma.courseLesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, courseId: true, course: { select: { languageId: true } } },
+  })
+  if (!lesson) return { error: "Not found" }
+  if (!(await canEditLanguage(lesson.course.languageId, userId))) return { error: "Not found" }
+
+  if (unitId) {
+    const unit = await prisma.unit.findFirst({
+      where: { id: unitId, courseId: lesson.courseId },
+      select: { id: true },
+    })
+    if (!unit) return { error: "Invalid unit" }
+  }
+
+  const updated = await prisma.courseLesson.update({
+    where: { id: lessonId },
+    data: { unitId },
+  })
+  revalidatePath(`/studio/lang`)
+  return { data: updated }
+}
+
+async function requireUnitEditAccess(unitId: string, userId: string) {
+  const unit = await prisma.unit.findUnique({
+    where: { id: unitId },
+    select: { id: true, course: { select: { languageId: true } } },
+  })
+  if (!unit) return null
+  if (!(await canEditLanguage(unit.course.languageId, userId))) return null
+  return unit
 }
 
 export async function addLessonItem(
@@ -402,10 +600,20 @@ export async function addLessonItem(
   sourceId: string,
 ) {
   const userId = await requireAuth()
-  const lesson = await prisma.courseLesson.findFirst({
-    where: { id: lessonId, course: { authorId: userId } },
+  const lesson = await prisma.courseLesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, course: { select: { languageId: true } } },
   })
   if (!lesson) return { error: "Not found" }
+
+  const languageId = lesson.course.languageId
+  if (!(await canEditLanguage(languageId, userId))) return { error: "Not found" }
+
+  // The linked content must belong to the same language as the course.
+  const sourceLanguageId = await getSourceLanguageId(type, sourceId)
+  if (!sourceLanguageId || sourceLanguageId !== languageId) {
+    return { error: "Invalid item: content does not belong to this language" }
+  }
 
   const last = await prisma.lessonItem.findFirst({
     where: { lessonId },
@@ -426,30 +634,63 @@ export async function addLessonItem(
   return { data: item }
 }
 
+/** Look up the owning languageId for a lesson-item source of the given type. */
+async function getSourceLanguageId(
+  type: "VOCAB" | "GRAMMAR" | "TEXT" | "SENTENCE",
+  sourceId: string,
+): Promise<string | null> {
+  switch (type) {
+    case "VOCAB": {
+      const e = await prisma.dictionaryEntry.findUnique({ where: { id: sourceId }, select: { languageId: true } })
+      return e?.languageId ?? null
+    }
+    case "GRAMMAR": {
+      const g = await prisma.grammarPage.findUnique({ where: { id: sourceId }, select: { languageId: true } })
+      return g?.languageId ?? null
+    }
+    case "TEXT": {
+      const t = await prisma.text.findUnique({ where: { id: sourceId }, select: { languageId: true } })
+      return t?.languageId ?? null
+    }
+    case "SENTENCE": {
+      const s = await prisma.exampleSentence.findUnique({
+        where: { id: sourceId },
+        select: { entry: { select: { languageId: true } } },
+      })
+      return s?.entry?.languageId ?? null
+    }
+    default:
+      return null
+  }
+}
+
 export async function deleteLessonItem(itemId: string) {
   const userId = await requireAuth()
-  const item = await prisma.lessonItem.findFirst({
-    where: { id: itemId, lesson: { course: { authorId: userId } } },
+  const item = await prisma.lessonItem.findUnique({
+    where: { id: itemId },
+    select: { id: true, lesson: { select: { course: { select: { languageId: true } } } } },
   })
   if (!item) return { error: "Not found" }
+  if (!(await canEditLanguage(item.lesson.course.languageId, userId))) return { error: "Not found" }
   await prisma.lessonItem.delete({ where: { id: itemId } })
   return { data: true }
 }
 
 export async function deleteLesson(lessonId: string) {
   const userId = await requireAuth()
-  const lesson = await prisma.courseLesson.findFirst({
-    where: { id: lessonId, course: { authorId: userId } },
+  const lesson = await prisma.courseLesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, course: { select: { languageId: true } } },
   })
   if (!lesson) return { error: "Not found" }
+  if (!(await canEditLanguage(lesson.course.languageId, userId))) return { error: "Not found" }
   await prisma.courseLesson.delete({ where: { id: lessonId } })
   return { data: true }
 }
 
 export async function deleteCourse(courseId: string) {
   const userId = await requireAuth()
-  const course = await prisma.course.findFirst({ where: { id: courseId, authorId: userId } })
-  if (!course) return { error: "Not found" }
+  if (!(await requireCourseEditAccess(courseId, userId))) return { error: "Not found" }
   await prisma.course.delete({ where: { id: courseId } })
   revalidatePath(`/studio/lang`)
   return { data: true }

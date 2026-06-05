@@ -7,7 +7,8 @@ import Image from "next/image"
 import type { Metadata } from "next"
 import { ShareButtons } from "@/components/share-buttons"
 import { FavoriteButton } from "@/components/favorite-button"
-import { Languages, BookOpen, FileText, ArrowRight, Calendar, Clock, Newspaper, BookMarked, Flag, Globe, MessageSquare, MessageCircle, Heart } from "lucide-react"
+import { Languages, BookOpen, FileText, ArrowRight, Calendar, Clock, Newspaper, BookMarked, Flag, Globe, MessageSquare, MessageCircle, Heart, GraduationCap, Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/utils"
 import { LanguageHero } from "./components/language-hero"
 import { MaintainersSection } from "./components/maintainers-section"
@@ -59,6 +60,7 @@ async function getLanguage(slug: string) {
           articles: true,
           texts: true,
           favorites: true,
+          courses: { where: { visibility: "PUBLISHED" } },
         },
       },
       articles: {
@@ -239,6 +241,35 @@ export default async function PublicLanguagePage({
         owner={language.owner}
         editors={language.collaborators.map((c) => c.user)}
       />
+
+      {/* Learn this language CTA — only when published courses exist */}
+      {language._count.courses > 0 && (
+        <section>
+          <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card/50 to-accent/10 p-6 sm:p-8">
+            <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
+            <div className="relative flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                  <GraduationCap className="h-6 w-6" />
+                </span>
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight">Learn {language.name}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {language._count.courses} course{language._count.courses !== 1 ? "s" : ""} with lessons,
+                    spaced-repetition review, XP, and streaks.
+                  </p>
+                </div>
+              </div>
+              <Button asChild size="lg" className="shrink-0 gap-2">
+                <Link href={`/learn/${language.slug}`}>
+                  <Sparkles className="h-4 w-4" />
+                  Start learning
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Language Family */}
       {familyTree && (

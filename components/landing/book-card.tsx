@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { motion } from "motion/react"
-import { Languages, BookOpen, FileText, Heart, ArrowRight } from "lucide-react"
+import { Languages, BookOpen, FileText, Heart, ArrowRight, GraduationCap } from "lucide-react"
 import { cn, formatDate } from "@/lib/utils"
 
 export interface BookCardLanguage {
@@ -19,6 +19,7 @@ export interface BookCardLanguage {
         grammarPages?: number
         dictionaryEntries: number
         favorites?: number
+        courses?: number
     }
 }
 
@@ -104,6 +105,21 @@ function Stats({ language }: { language: BookCardLanguage }) {
     )
 }
 
+function LearnBadge({ language, className }: { language: BookCardLanguage; className?: string }) {
+    if (!language._count.courses) return null
+    return (
+        <span
+            className={cn(
+                "inline-flex items-center gap-1 rounded-full bg-primary/90 px-2 py-0.5 text-xs font-medium text-primary-foreground shadow-sm backdrop-blur",
+                className
+            )}
+        >
+            <GraduationCap className="h-3 w-3" />
+            Learn
+        </span>
+    )
+}
+
 // A subtle vertical accent that keeps the "book spine" identity.
 const Spine = () => (
     <div className="absolute left-0 top-0 bottom-0 z-10 w-1 bg-gradient-to-b from-primary/50 via-primary/20 to-transparent" />
@@ -142,6 +158,7 @@ export function BookCard({ language, view = "grid", className }: BookCardProps) 
                         )}
                     </div>
                     <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+                        <LearnBadge language={language} />
                         <Stats language={language} />
                     </div>
                     <ArrowRight className="hidden h-4 w-4 shrink-0 text-muted-foreground transition-all group-hover:translate-x-1 group-hover:text-primary md:block" />
@@ -162,12 +179,15 @@ export function BookCard({ language, view = "grid", className }: BookCardProps) 
                 <div className="absolute left-2.5 top-0 bottom-0 z-20 w-px bg-black/10 dark:bg-white/10" />
 
                 <div className="flex h-full flex-col pl-2.5">
-                    <Cover
-                        name={language.name}
-                        flagUrl={language.flagUrl}
-                        className="h-[150px] w-full"
-                        textClassName="text-5xl"
-                    />
+                    <div className="relative">
+                        <Cover
+                            name={language.name}
+                            flagUrl={language.flagUrl}
+                            className="h-[150px] w-full"
+                            textClassName="text-5xl"
+                        />
+                        <LearnBadge language={language} className="absolute right-2 top-2 z-10" />
+                    </div>
                     <div className="flex flex-1 flex-col p-4">
                         <h3 className="line-clamp-2 text-lg font-bold leading-tight tracking-tight transition-colors group-hover:text-primary">
                             {language.name}

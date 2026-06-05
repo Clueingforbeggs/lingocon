@@ -4,6 +4,7 @@ import type {
   TranslateExercise,
   MatchPairsExercise,
   SentenceBuilderExercise,
+  InfoExercise,
 } from "@/types/lesson"
 
 export interface VocabItem {
@@ -18,6 +19,26 @@ export interface VocabItem {
     translation: string
     gloss: string | null
   }[]
+}
+
+export interface SentenceItem {
+  id: string
+  sentence: string      // conlang sentence
+  translation: string   // native translation
+}
+
+export interface ConceptItem {
+  id: string
+  kind: "GRAMMAR" | "TEXT"
+  title: string
+  body: string          // plain-text excerpt
+  href?: string         // link to full page
+}
+
+export interface LessonContent {
+  vocab: VocabItem[]
+  sentences: SentenceItem[]
+  concepts: ConceptItem[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -127,6 +148,46 @@ function buildSentenceBuilder(
   }
 }
 
+/** Sentence-builder from an explicit sentence item (not tied to a vocab word). */
+function buildSentenceBuilderFromSentence(
+  sentence: SentenceItem,
+  distractorPool: string[],
+): SentenceBuilderExercise | null {
+  const cleanSentence = sentence.sentence.replace(/[.,!?()";:]/g, "").trim()
+  const correctWords = cleanSentence.split(/\s+/).filter(Boolean)
+  if (correctWords.length < 2) return null
+
+  const distractors: string[] = []
+  const pool = shuffle(distractorPool.filter(Boolean))
+  for (const candidate of pool) {
+    if (distractors.length >= 3) break
+    if (!correctWords.includes(candidate) && !distractors.includes(candidate)) {
+      distractors.push(candidate)
+    }
+  }
+
+  const allWords = shuffle([...correctWords, ...distractors])
+  return {
+    type: "SENTENCE_BUILDER",
+    id: `sb-sentence-${sentence.id}`,
+    prompt: sentence.translation,
+    sentence: cleanSentence,
+    words: allWords.map((text, idx) => ({ id: `word-${idx}`, text })),
+  }
+}
+
+function buildInfoCard(concept: ConceptItem): InfoExercise {
+  const trimmed = concept.body.length > 600 ? `${concept.body.slice(0, 600).trim()}…` : concept.body
+  return {
+    type: "INFO",
+    id: `info-${concept.kind.toLowerCase()}-${concept.id}`,
+    kind: concept.kind,
+    title: concept.title,
+    body: trimmed,
+    href: concept.href,
+  }
+}
+
 // ─── Main generator ───────────────────────────────────────────────────────────
 
 /**
@@ -134,9 +195,11 @@ function buildSentenceBuilder(
  *
  * Structure per lesson:
  *  1. MATCH_PAIRS warm-up (groups of ≤6)
- *  2. MULTIPLE_CHOICE (conlang→native) for every item
- *  3. TRANSLATE (native→conlang) for a random half of items
- *  4. MULTIPLE_CHOICE (native→conlang) for items with enough pool distractors
+ *  2. Recognition: MULTIPLE_CHOICE (conlang→native) for every item
+ *  3. Production: TRANSLATE (native→conlang) for every item
+ *  4. Production: MULTIPLE_CHOICE (native→conlang) when the pool is large enough
+ *
+ * Recognition and production exercises are then shuffled and interleaved.
  */
 export function generateExercises(items: VocabItem[]): Exercise[] {
   if (items.length === 0) return []
@@ -163,7 +226,7 @@ export function generateExercises(items: VocabItem[]): Exercise[] {
 
     // Bonus: reverse MC (native → conlang) when pool is large enough for distractors
     if (items.length >= 4) {
-      recognition.push(buildMultipleChoice(item, items, "to_native"))
+      production.push(buildMultipleChoice(item, items, "to_target"))
     }
 
     // Sentence builder: if example sentences exist
@@ -184,4 +247,40 @@ export function generateExercises(items: VocabItem[]): Exercise[] {
   }
 
   return [...exercises, ...interleaved]
+}
+
+/**
+ * Builds a full lesson session from mixed content (vocab + sentences + grammar/
+ * text concepts). Concepts are taught first as non-graded INFO cards, then the
+ * graded vocab + sentence exercises follow.
+ *
+ * A lesson is "playable" whenever this returns at least one exercise — including
+ * concept-only (reading) lessons, which previously could not be started at all.
+ */
+export function generateLessonExercises(content: LessonContent): Exercise[] {
+  const { vocab, sentences, concepts } = content
+
+  // 1. Teaching cards (grammar before text), shown up front.
+  const grammarFirst = [...concepts].sort((a, b) =>
+    a.kind === b.kind ? 0 : a.kind === "GRAMMAR" ? -1 : 1,
+  )
+  const infoCards = grammarFirst.map(buildInfoCard)
+
+  // 2. Vocab exercises (existing pipeline).
+  const vocabExercises = vocab.length > 0 ? generateExercises(vocab) : []
+
+  // 3. Sentence exercises from explicit sentence items.
+  const distractorPool = vocab.map((v) => v.lemma)
+  const sentenceExercises: Exercise[] = []
+  for (const sentence of sentences) {
+    const sb = buildSentenceBuilderFromSentence(sentence, distractorPool)
+    if (sb) sentenceExercises.push(sb)
+  }
+
+  return [...infoCards, ...vocabExercises, ...shuffle(sentenceExercises)]
+}
+
+/** Whether a set of lesson item types can produce a playable session. */
+export function lessonHasPlayableContent(types: string[]): boolean {
+  return types.some((t) => t === "VOCAB" || t === "SENTENCE" || t === "GRAMMAR" || t === "TEXT")
 }

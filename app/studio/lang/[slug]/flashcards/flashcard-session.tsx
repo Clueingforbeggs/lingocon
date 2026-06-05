@@ -137,9 +137,25 @@ export function FlashcardSession({ entries, languageName, languageSlug, isPublic
     return (
       <div className="max-w-xl mx-auto space-y-8">
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Study {languageName}</h1>
-          <p className="text-muted-foreground">Choose your study mode and options</p>
+          <h1 className="text-3xl font-bold tracking-tight">{languageName} Quick Practice</h1>
+          <p className="text-muted-foreground">A quick flashcard or quiz session — no progress is saved</p>
         </div>
+
+        {isPublic && (
+          <Link
+            href={`/learn/${languageSlug}`}
+            className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm transition-colors hover:bg-primary/10"
+          >
+            <span className="flex items-center gap-2">
+              <Brain className="h-4 w-4 text-primary" />
+              <span>
+                Want it to stick? <span className="font-medium text-foreground">Enroll to learn {languageName}</span> with
+                spaced repetition, XP, and streaks.
+              </span>
+            </span>
+            <ArrowLeft className="h-4 w-4 shrink-0 rotate-180 text-primary" />
+          </Link>
+        )}
 
         {/* Mode selector */}
         <div className="grid grid-cols-2 gap-4">

@@ -10,14 +10,13 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog"
 import {
   GraduationCap, Plus, Trash2, Eye, EyeOff, Loader2,
   BookOpen, FileText, MessageSquare, Type, ChevronDown, ChevronRight, Check,
-  FolderPlus, Layers, Pencil, ChevronUp, ExternalLink, Search, X,
+  FolderPlus, Layers, Pencil, ChevronUp, ExternalLink, Search, X, ChevronsDown,
 } from "lucide-react"
 import {
   createLesson, createLessonInUnit, addLessonItem, deleteLessonItem, deleteLesson, updateCourse,
@@ -742,6 +741,10 @@ function AddItemDialog({
   const [vocabResults, setVocabResults] = useState<DictEntry[]>([])
   const [sentenceResults, setSentenceResults] = useState<SentenceOption[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const PAGE_SIZE = 50
   const [selectedItem, setSelectedItem] = useState<{ id: string; data: DictEntry | SentenceOption | GrammarPage | TextItem } | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -762,19 +765,40 @@ function AddItemDialog({
   const [vocabPos, setVocabPos] = useState("")
 
   // Load initial results when dialog opens or type changes
-  const loadInitial = useCallback(async (t: ItemType) => {
+  const loadInitial = useCallback(async (t: ItemType, q = "") => {
     if (t === "VOCAB") {
       setIsSearching(true)
-      const r = await searchDictEntries(languageId, "")
+      const r = await searchDictEntries(languageId, q, 0)
       setVocabResults(r)
+      setOffset(r.length)
+      setHasMore(r.length === PAGE_SIZE)
       setIsSearching(false)
     } else if (t === "SENTENCE") {
       setIsSearching(true)
-      const r = await searchCourseSentences(languageId, "")
+      const r = await searchCourseSentences(languageId, q, 0)
       setSentenceResults(r)
+      setOffset(r.length)
+      setHasMore(r.length === PAGE_SIZE)
       setIsSearching(false)
     }
   }, [languageId])
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore) return
+    setIsLoadingMore(true)
+    if (type === "VOCAB") {
+      const r = await searchDictEntries(languageId, searchQuery, offset)
+      setVocabResults(prev => [...prev, ...r])
+      setOffset(prev => prev + r.length)
+      setHasMore(r.length === PAGE_SIZE)
+    } else if (type === "SENTENCE") {
+      const r = await searchCourseSentences(languageId, searchQuery, offset)
+      setSentenceResults(prev => [...prev, ...r])
+      setOffset(prev => prev + r.length)
+      setHasMore(r.length === PAGE_SIZE)
+    }
+    setIsLoadingMore(false)
+  }, [isLoadingMore, type, languageId, searchQuery, offset])
 
   useEffect(() => {
     if (!open) return
@@ -783,24 +807,14 @@ function AddItemDialog({
     setTimeout(() => searchRef.current?.focus(), 50)
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Debounced search
+  // Debounced search — resets pagination each time query changes
   useEffect(() => {
     if (!open || mode !== "search") return
     if (type !== "VOCAB" && type !== "SENTENCE") return
 
-    const timer = setTimeout(async () => {
-      setIsSearching(true)
-      if (type === "VOCAB") {
-        const r = await searchDictEntries(languageId, searchQuery)
-        setVocabResults(r)
-      } else {
-        const r = await searchCourseSentences(languageId, searchQuery)
-        setSentenceResults(r)
-      }
-      setIsSearching(false)
-    }, 280)
+    const timer = setTimeout(() => loadInitial(type, searchQuery), 280)
     return () => clearTimeout(timer)
-  }, [searchQuery, type, open, mode, languageId])
+  }, [searchQuery, type, open, mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Word picker search for write-sentence mode
   useEffect(() => {
@@ -817,7 +831,9 @@ function AddItemDialog({
     setMode("search")
     setSelectedItem(null)
     setSearchQuery("")
-    loadInitial(newType)
+    setOffset(0)
+    setHasMore(false)
+    loadInitial(newType, "")
   }
 
   function resetAll() {
@@ -827,6 +843,8 @@ function AddItemDialog({
     setSearchQuery("")
     setVocabResults([])
     setSentenceResults([])
+    setOffset(0)
+    setHasMore(false)
     setSentText("")
     setSentTranslation("")
     setSentGloss("")
@@ -1030,7 +1048,7 @@ function AddItemDialog({
               )}
 
               {/* Results list */}
-              <ScrollArea className="flex-1 min-h-0 rounded-md border border-border">
+              <div className="h-[260px] overflow-y-auto rounded-md border border-border">
                 <div className="p-1">
                   {isSearching ? (
                     <div className="flex items-center justify-center py-8">
@@ -1058,41 +1076,57 @@ function AddItemDialog({
                       )}
                     </div>
                   ) : (
-                    listOptions.map((opt) => {
-                      const isSelected = selectedItem?.id === opt.id
-                      return (
+                    <>
+                      {listOptions.map((opt) => {
+                        const isSelected = selectedItem?.id === opt.id
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => {
+                              const raw =
+                                type === "VOCAB"    ? vocabResults.find(e => e.id === opt.id)
+                                : type === "SENTENCE" ? sentenceResults.find(s => s.id === opt.id)
+                                : type === "GRAMMAR"  ? grammarPages.find(p => p.id === opt.id)
+                                : texts.find(t => t.id === opt.id)
+                              if (raw) setSelectedItem({ id: opt.id, data: raw })
+                            }}
+                            className={cn(
+                              "w-full rounded-md px-3 py-2 text-left text-sm transition-colors flex items-start gap-2",
+                              isSelected
+                                ? "bg-primary/10 ring-1 ring-primary/30"
+                                : "hover:bg-secondary/60"
+                            )}
+                          >
+                            <div className={cn("mt-0.5 h-4 w-4 shrink-0 rounded border flex items-center justify-center",
+                              isSelected ? "border-primary bg-primary" : "border-border")}>
+                              {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <span className={cn("block truncate font-medium", type === "VOCAB" ? "font-serif" : "")}>{opt.label}</span>
+                              {opt.sub && <span className="block truncate text-xs text-muted-foreground">{opt.sub}</span>}
+                            </div>
+                          </button>
+                        )
+                      })}
+                      {(hasMore || isLoadingMore) && (
                         <button
-                          key={opt.id}
                           type="button"
-                          onClick={() => {
-                            const raw =
-                              type === "VOCAB"    ? vocabResults.find(e => e.id === opt.id)
-                              : type === "SENTENCE" ? sentenceResults.find(s => s.id === opt.id)
-                              : type === "GRAMMAR"  ? grammarPages.find(p => p.id === opt.id)
-                              : texts.find(t => t.id === opt.id)
-                            if (raw) setSelectedItem({ id: opt.id, data: raw })
-                          }}
-                          className={cn(
-                            "w-full rounded-md px-3 py-2 text-left text-sm transition-colors flex items-start gap-2",
-                            isSelected
-                              ? "bg-primary/10 ring-1 ring-primary/30"
-                              : "hover:bg-secondary/60"
-                          )}
+                          onClick={loadMore}
+                          disabled={isLoadingMore}
+                          className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                         >
-                          <div className={cn("mt-0.5 h-4 w-4 shrink-0 rounded border flex items-center justify-center",
-                            isSelected ? "border-primary bg-primary" : "border-border")}>
-                            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <span className={cn("block truncate font-medium", type === "VOCAB" ? "font-serif" : "")}>{opt.label}</span>
-                            {opt.sub && <span className="block truncate text-xs text-muted-foreground">{opt.sub}</span>}
-                          </div>
+                          {isLoadingMore
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <ChevronsDown className="h-3.5 w-3.5" />
+                          }
+                          {isLoadingMore ? "Loading…" : "Load more"}
                         </button>
-                      )
-                    })
+                      )}
+                    </>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
 
               {/* External link hint for grammar/text */}
               {(type === "GRAMMAR" || type === "TEXT") && listOptions.length > 0 && (

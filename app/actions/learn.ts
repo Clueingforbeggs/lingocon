@@ -936,9 +936,12 @@ function fsrsStateToDb(s: State): "NEW" | "LEARNING" | "REVIEW" | "RELEARNING" {
 
 // ─── Course editor search ─────────────────────────────────────────────────────
 
+const SEARCH_PAGE_SIZE = 50
+
 export async function searchDictEntries(
   languageId: string,
   query: string,
+  skip = 0,
 ): Promise<{ id: string; lemma: string; gloss: string; partOfSpeech: string | null }[]> {
   const userId = await getUserId()
   if (!userId) return []
@@ -961,13 +964,15 @@ export async function searchDictEntries(
     },
     select: { id: true, lemma: true, gloss: true, partOfSpeech: true },
     orderBy: { lemma: "asc" },
-    take: 60,
+    skip,
+    take: SEARCH_PAGE_SIZE,
   })
 }
 
 export async function searchCourseSentences(
   languageId: string,
   query: string,
+  skip = 0,
 ): Promise<{ id: string; sentence: string; translation: string }[]> {
   const userId = await getUserId()
   if (!userId) return []
@@ -990,6 +995,7 @@ export async function searchCourseSentences(
     },
     select: { id: true, sentence: true, translation: true },
     orderBy: { createdAt: "desc" },
-    take: 60,
+    skip,
+    take: SEARCH_PAGE_SIZE,
   })
 }

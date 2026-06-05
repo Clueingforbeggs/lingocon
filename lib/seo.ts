@@ -112,7 +112,7 @@ export function buildLanguageMetadata(
 
   const ogImages: { url: string; width: number; height: number; alt: string }[] = []
   const flag = resolveAssetUrl(language.flagUrl)
-  if (flag) {
+  if (flag && !flag.toLowerCase().endsWith('.svg')) {
     ogImages.push({ url: flag, width: 800, height: 600, alt: `Flag of the ${language.name} constructed language` })
   }
   ogImages.push({

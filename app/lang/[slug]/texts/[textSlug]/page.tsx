@@ -125,7 +125,8 @@ export async function generateMetadata({
   const title = `${text.title} — ${language.name}`
   const description = `Read "${text.title}", a text written in ${language.name}, a constructed language documented on ${SITE_NAME}.`
   const url = `${getSiteUrl()}/lang/${language.slug}/texts/${text.slug}`
-  const coverImage = resolveAssetUrl(text.coverImage)
+  const coverImageRaw = resolveAssetUrl(text.coverImage)
+  const coverImage = coverImageRaw && !coverImageRaw.toLowerCase().endsWith('.svg') ? coverImageRaw : null
   const ogImage = coverImage ?? languageOgImage(language.id)
 
   return {

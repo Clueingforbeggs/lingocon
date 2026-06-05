@@ -19,7 +19,16 @@ async function getLessonData(lessonId: string, userId: string) {
           id: true,
           title: true,
           visibility: true,
-          language: { select: { id: true, name: true, slug: true } },
+          language: {
+            select: {
+              id: true, name: true, slug: true,
+              fontUrl: true, fontFamily: true, fontScale: true,
+              scriptSymbols: {
+                select: { symbol: true, latin: true },
+                orderBy: { order: "asc" as const },
+              },
+            },
+          },
         },
       },
       items: {
@@ -172,6 +181,10 @@ export default async function LessonPage({
         languageSlug={slug}
         languageName={lesson.course.language.name}
         courseId={lesson.course.id}
+        fontUrl={lesson.course.language.fontUrl}
+        fontFamily={lesson.course.language.fontFamily}
+        fontScale={lesson.course.language.fontScale ?? 1}
+        scriptSymbols={lesson.course.language.scriptSymbols}
       />
     </div>
   )

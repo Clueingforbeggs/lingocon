@@ -5,13 +5,21 @@ import { Button } from "@/components/ui/button"
 import { completeLesson } from "@/app/actions/learn"
 import {
   X, Heart, HeartCrack, Trophy, ArrowLeft, Sparkles,
-  CheckCircle2, XCircle, RotateCcw, Zap, BookOpen, FileText, ExternalLink, Target,
+  CheckCircle2, XCircle, RotateCcw, Zap, BookOpen, FileText, ExternalLink, Target, Languages,
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import confetti from "canvas-confetti"
 import type { Exercise, MultipleChoiceExercise, TranslateExercise, MatchPairsExercise, SentenceBuilderExercise, InfoExercise } from "@/types/lesson"
+import { FontLoader } from "@/components/font-loader"
+
+type ScriptSymbol = { symbol: string; latin: string | null }
+
+function romanize(text: string, symbols: ScriptSymbol[]): string {
+  const map = new Map(symbols.filter(s => s.latin).map(s => [s.symbol, s.latin!]))
+  return text.split("").map(c => map.get(c) ?? c).join("")
+}
 
 // ─── XP config ────────────────────────────────────────────────────────────────
 
@@ -52,6 +60,10 @@ interface LessonEngineProps {
   languageSlug: string
   languageName: string
   courseId: string
+  fontUrl?: string | null
+  fontFamily?: string | null
+  fontScale?: number
+  scriptSymbols: ScriptSymbol[]
 }
 
 type FeedbackState =
@@ -65,6 +77,7 @@ type Screen = "lesson" | "complete" | "failed"
 
 export function LessonEngine({
   lessonId, lessonTitle, exercises, languageSlug, languageName, courseId,
+  fontUrl, fontFamily, fontScale, scriptSymbols,
 }: LessonEngineProps) {
   const [queue, setQueue]         = useState<Exercise[]>(exercises)
   const [idx, setIdx]             = useState(0)
@@ -80,6 +93,7 @@ export function LessonEngine({
   const [awardedXp, setAwardedXp] = useState<number | null>(null)
   const [mistakes, setMistakes]   = useState<Exercise[]>([])
   const [reviewMode, setReviewMode] = useState(false)
+  const [showRoman, setShowRoman] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const baseExerciseId = (id: string) => id.replace(/-(retry|review).*$/, "")
@@ -298,6 +312,8 @@ export function LessonEngine({
 
   return (
     <div className="flex flex-col min-h-screen">
+      <FontLoader fontUrl={fontUrl} fontFamily={fontFamily} fontScale={fontScale} />
+
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/50">
         <div className="container mx-auto max-w-2xl px-4 py-3 flex items-center gap-4">
@@ -312,6 +328,20 @@ export function LessonEngine({
               style={{ width: `${Math.round(progress * 100)}%` }}
             />
           </div>
+
+          {/* Romanization toggle — only shown when language has a custom script */}
+          {scriptSymbols.some(s => s.latin) && (
+            <button
+              onClick={() => setShowRoman(p => !p)}
+              className={cn(
+                "flex items-center rounded-lg p-1.5 transition-colors",
+                showRoman ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
+              )}
+              title={showRoman ? "Hide romanization" : "Show romanization"}
+            >
+              <Languages className="h-4 w-4" />
+            </button>
+          )}
 
           {/* Hearts */}
           <div className="flex items-center gap-1">
@@ -332,6 +362,8 @@ export function LessonEngine({
         {current.type === "MATCH_PAIRS" ? (
           <MatchPairsCard
             exercise={current}
+            scriptSymbols={scriptSymbols}
+            showRoman={showRoman}
             onWrong={handleMatchWrong}
             onComplete={() => {
               if (hearts === 0) return
@@ -366,6 +398,8 @@ export function LessonEngine({
                 selected={selected}
                 feedback={feedback}
                 onSelect={setSelected}
+                scriptSymbols={scriptSymbols}
+                showRoman={showRoman}
               />
             )}
             {current.type === "TRANSLATE" && (
@@ -376,6 +410,8 @@ export function LessonEngine({
                 onChange={setTyped}
                 onSubmit={checkAnswer}
                 inputRef={inputRef}
+                scriptSymbols={scriptSymbols}
+                showRoman={showRoman}
               />
             )}
             {current.type === "SENTENCE_BUILDER" && (
@@ -384,6 +420,8 @@ export function LessonEngine({
                 selectedWords={selectedBuilderWords}
                 onSelect={setSelectedBuilderWords}
                 feedback={feedback}
+                scriptSymbols={scriptSymbols}
+                showRoman={showRoman}
               />
             )}
           </div>
@@ -471,20 +509,26 @@ export function LessonEngine({
 // ─── Multiple Choice Card ─────────────────────────────────────────────────────
 
 function MultipleChoiceCard({
-  exercise, selected, feedback, onSelect,
+  exercise, selected, feedback, onSelect, scriptSymbols, showRoman,
 }: {
   exercise: MultipleChoiceExercise
   selected: string | null
   feedback: FeedbackState
   onSelect: (id: string) => void
+  scriptSymbols: ScriptSymbol[]
+  showRoman: boolean
 }) {
+  const roman = showRoman ? romanize(exercise.word, scriptSymbols) : null
   return (
     <div className="space-y-8">
       <div>
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
           {exercise.prompt}
         </p>
-        <p className="text-5xl font-bold tracking-tight">{exercise.word}</p>
+        <p className="text-5xl font-bold tracking-tight font-custom-script">{exercise.word}</p>
+        {roman && roman !== exercise.word && (
+          <p className="text-xl text-muted-foreground mt-2">{roman}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -529,7 +573,7 @@ function MultipleChoiceCard({
 // ─── Translate Card ───────────────────────────────────────────────────────────
 
 function TranslateCard({
-  exercise, value, feedback, onChange, onSubmit, inputRef,
+  exercise, value, feedback, onChange, onSubmit, inputRef, scriptSymbols, showRoman,
 }: {
   exercise: TranslateExercise
   value: string
@@ -537,8 +581,11 @@ function TranslateCard({
   onChange: (v: string) => void
   onSubmit: () => void
   inputRef: React.RefObject<HTMLInputElement>
+  scriptSymbols: ScriptSymbol[]
+  showRoman: boolean
 }) {
   const revealed = feedback.status !== "answering"
+  const roman = showRoman ? romanize(exercise.word, scriptSymbols) : null
 
   return (
     <div className="space-y-8">
@@ -546,7 +593,10 @@ function TranslateCard({
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
           {exercise.prompt}
         </p>
-        <p className="text-5xl font-bold tracking-tight">{exercise.word}</p>
+        <p className="text-5xl font-bold tracking-tight font-custom-script">{exercise.word}</p>
+        {roman && roman !== exercise.word && (
+          <p className="text-xl text-muted-foreground mt-2">{roman}</p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -622,11 +672,13 @@ function InfoCard({ exercise }: { exercise: InfoExercise }) {
 // ─── Match Pairs Card ─────────────────────────────────────────────────────────
 
 function MatchPairsCard({
-  exercise, onComplete, onWrong,
+  exercise, onComplete, onWrong, scriptSymbols, showRoman,
 }: {
   exercise: MatchPairsExercise
   onComplete: () => void
   onWrong: () => void
+  scriptSymbols: ScriptSymbol[]
+  showRoman: boolean
 }) {
   const [selectedLeft, setSelectedLeft]   = useState<string | null>(null)
   const [selectedRight, setSelectedRight] = useState<string | null>(null)
@@ -704,7 +756,8 @@ function MatchPairsCard({
                   !isSelected && !isMatched && !isShaking && "border-border bg-card hover:border-primary/40",
                 )}
               >
-                {pair.left}
+                <span className="font-custom-script">{pair.left}</span>
+                {showRoman && (() => { const r = romanize(pair.left, scriptSymbols); return r !== pair.left ? <span className="block text-xs font-normal opacity-70 mt-0.5">{r}</span> : null })()}
               </button>
             )
           })}
@@ -748,11 +801,15 @@ function SentenceBuilderCard({
   selectedWords,
   onSelect,
   feedback,
+  scriptSymbols,
+  showRoman,
 }: {
   exercise: SentenceBuilderExercise
   selectedWords: string[]
   onSelect: (words: string[]) => void
   feedback: FeedbackState
+  scriptSymbols: ScriptSymbol[]
+  showRoman: boolean
 }) {
   const isRevealed = feedback.status !== "answering"
 
@@ -791,7 +848,8 @@ function SentenceBuilderCard({
                   isRevealed && "pointer-events-none opacity-80"
                 )}
               >
-                {word.text}
+                <span className="font-custom-script">{word.text}</span>
+                {showRoman && (() => { const r = romanize(word.text, scriptSymbols); return r !== word.text ? <span className="block text-xs font-normal opacity-60">{r}</span> : null })()}
               </button>
             )
           })}
@@ -812,7 +870,8 @@ function SentenceBuilderCard({
                   isSelected ? "bg-muted text-muted border-border/40 opacity-0 pointer-events-none scale-90" : "hover:border-primary/40 text-foreground"
                 )}
               >
-                {word.text}
+                <span className="font-custom-script">{word.text}</span>
+                {showRoman && (() => { const r = romanize(word.text, scriptSymbols); return r !== word.text ? <span className="block text-xs font-normal opacity-60">{r}</span> : null })()}
               </button>
             )
           })}

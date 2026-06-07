@@ -314,7 +314,11 @@
       "saveSuccess": "Phonology settings saved",
       "saveError": "Failed to save",
       "unrecognizedSymbol": "This symbol is not recognized as a consonant or vowel in the chart",
-      "remove": "Remove"
+      "remove": "Remove",
+      "composeHintVowel": "Tap a base vowel, then diacritics, then Add",
+      "composeHintConsonant": "Tap a base consonant, then diacritics, then Add",
+      "backspace": "Backspace",
+      "addToInventory": "Add"
     },
     "grammar": {
       "pageTitle": "Grammar",
@@ -695,6 +699,7 @@
   "i18n": {
     "switcherLabel": "Interface Language",
     "english": "English",
+    "freeRussian": "Free Russian",
     "conlangTranslations": "Conlang Translations",
     "translated": "{percent}% translated",
     "addConlang": "Add your conlang",

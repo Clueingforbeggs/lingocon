@@ -5,7 +5,14 @@ import type {
   MatchPairsExercise,
   SentenceBuilderExercise,
   InfoExercise,
+  WordIntroExercise,
 } from "@/types/lesson"
+
+// Target one production drill per vocab item, with a floor so tiny lessons
+// still feel substantive. Production = typed TRANSLATE / reverse MC /
+// SENTENCE_BUILDER (the parts that go beyond intro + first recognition).
+const PRODUCTION_PER_WORD = 1
+const PRODUCTION_FLOOR = 4
 
 export interface VocabItem {
   id: string
@@ -112,33 +119,38 @@ function buildMatchPairs(chunk: VocabItem[]): MatchPairsExercise {
   }
 }
 
+const SB_DISTRACTOR_CAP = 2
+
 function buildSentenceBuilder(
   item: VocabItem,
   pool: VocabItem[]
 ): SentenceBuilderExercise | null {
   if (!item.exampleSentences || item.exampleSentences.length === 0) return null
-  
-  // Pick a random sentence
+
   const sentenceObj = item.exampleSentences[Math.floor(Math.random() * item.exampleSentences.length)]
-  
-  // Strip punctuation and split into words
+
   const cleanSentence = sentenceObj.sentence.replace(/[.,!?()";:]/g, "").trim()
   const correctWords = cleanSentence.split(/\s+/).filter(Boolean)
-  if (correctWords.length < 2) return null // Needs at least 2 words to be a builder exercise
-  
-  // Pick distractors from other words in the pool
+  if (correctWords.length < 2) return null
+
+  // Prefer distractors that share part-of-speech with the seed word — this
+  // makes the wrong choices plausible rather than obviously wrong.
+  const others = pool.filter(v => v.id !== item.id)
+  const samePos = item.partOfSpeech
+    ? others.filter(v => v.partOfSpeech === item.partOfSpeech)
+    : []
+  const candidatePool = samePos.length >= SB_DISTRACTOR_CAP ? samePos : others
+
   const distractors: string[] = []
-  const otherWords = pool.filter(v => v.id !== item.id)
-  
-  for (let i = 0; i < Math.min(3, otherWords.length); i++) {
-    const randomWord = otherWords[Math.floor(Math.random() * otherWords.length)].lemma
-    if (!correctWords.includes(randomWord) && !distractors.includes(randomWord)) {
-      distractors.push(randomWord)
+  for (const candidate of shuffle(candidatePool).map(v => v.lemma)) {
+    if (distractors.length >= SB_DISTRACTOR_CAP) break
+    if (!correctWords.includes(candidate) && !distractors.includes(candidate)) {
+      distractors.push(candidate)
     }
   }
-  
+
   const allWords = shuffle([...correctWords, ...distractors])
-  
+
   return {
     type: "SENTENCE_BUILDER",
     id: `sb-${item.id}-${sentenceObj.id}`,
@@ -160,7 +172,7 @@ function buildSentenceBuilderFromSentence(
   const distractors: string[] = []
   const pool = shuffle(distractorPool.filter(Boolean))
   for (const candidate of pool) {
-    if (distractors.length >= 3) break
+    if (distractors.length >= SB_DISTRACTOR_CAP) break
     if (!correctWords.includes(candidate) && !distractors.includes(candidate)) {
       distractors.push(candidate)
     }
@@ -173,6 +185,19 @@ function buildSentenceBuilderFromSentence(
     prompt: sentence.translation,
     sentence: cleanSentence,
     words: allWords.map((text, idx) => ({ id: `word-${idx}`, text })),
+  }
+}
+
+function buildWordIntro(item: VocabItem): WordIntroExercise {
+  const first = item.exampleSentences?.[0]
+  return {
+    type: "WORD_INTRO",
+    id: `intro-${item.id}`,
+    word: item.lemma,
+    gloss: item.gloss,
+    ipa: item.ipa ?? undefined,
+    partOfSpeech: item.partOfSpeech ?? undefined,
+    example: first ? { sentence: first.sentence, translation: first.translation } : undefined,
   }
 }
 
@@ -193,60 +218,57 @@ function buildInfoCard(concept: ConceptItem): InfoExercise {
 /**
  * Generates a Duolingo-style exercise sequence from a list of vocabulary items.
  *
- * Structure per lesson:
- *  1. MATCH_PAIRS warm-up (groups of ≤6)
- *  2. Recognition: MULTIPLE_CHOICE (conlang→native) for every item
- *  3. Production: TRANSLATE (native→conlang) for every item
- *  4. Production: MULTIPLE_CHOICE (native→conlang) when the pool is large enough
+ * Sequence per lesson:
+ *   1. **Intro pass** — for each new word: WORD_INTRO flashcard, then a
+ *      recognition MULTIPLE_CHOICE (conlang→native). The learner always sees
+ *      the meaning before being quizzed on it.
+ *   2. **Match-pairs warm-up** — chunks of up to 6, after every word has been
+ *      introduced and recognized at least once. Cold pattern-matching against
+ *      unfamiliar script is no longer the first thing the learner sees.
+ *   3. **Production round** — typed TRANSLATE, reverse MC (native→conlang),
+ *      and SENTENCE_BUILDER where example sentences exist. Shuffled.
  *
- * Recognition and production exercises are then shuffled and interleaved.
+ * The graded portion is capped at LESSON_GRADED_CAP exercises so a 20-word list
+ * doesn't blow up into a 60-card slog. The cap prioritizes coverage: every word
+ * keeps its intro + first recognition; bonus production drills are trimmed first.
  */
 export function generateExercises(items: VocabItem[]): Exercise[] {
   if (items.length === 0) return []
 
-  const exercises: Exercise[] = []
+  // ── 1. Intro pass: introduce each word, then immediately quiz recognition.
+  const introPass: Exercise[] = []
+  for (const item of items) {
+    introPass.push(buildWordIntro(item))
+    introPass.push(buildMultipleChoice(item, items, "to_native"))
+  }
 
-  // 1. Match-pairs warm-up — chunks of up to 6 items
+  // ── 2. Match-pairs warm-up — only after every word has been introduced.
+  const matchPairs: Exercise[] = []
   for (let i = 0; i < items.length; i += 6) {
     const chunk = items.slice(i, i + 6)
     if (chunk.length >= 2) {
-      exercises.push(buildMatchPairs(shuffle(chunk)))
+      matchPairs.push(buildMatchPairs(shuffle(chunk)))
     }
   }
 
-  const recognition: Exercise[] = []
+  // ── 3. Production round.
   const production: Exercise[] = []
-
   for (const item of items) {
-    // Always: recognition MC (conlang → native)
-    recognition.push(buildMultipleChoice(item, items, "to_native"))
-
-    // Production: typed translate (native → conlang) for every item
     production.push(buildTranslate(item, "to_target"))
-
-    // Bonus: reverse MC (native → conlang) when pool is large enough for distractors
     if (items.length >= 4) {
       production.push(buildMultipleChoice(item, items, "to_target"))
     }
-
-    // Sentence builder: if example sentences exist
-    const sbExercise = buildSentenceBuilder(item, items)
-    if (sbExercise) {
-      production.push(sbExercise)
-    }
+    const sb = buildSentenceBuilder(item, items)
+    if (sb) production.push(sb)
   }
+  const productionShuffled = shuffle(production)
 
-  // Interleave recognition and production so variety is high throughout
-  const interleaved: Exercise[] = []
-  const recShuffled = shuffle(recognition)
-  const prodShuffled = shuffle(production)
-  const maxLen = Math.max(recShuffled.length, prodShuffled.length)
-  for (let i = 0; i < maxLen; i++) {
-    if (i < recShuffled.length) interleaved.push(recShuffled[i])
-    if (i < prodShuffled.length) interleaved.push(prodShuffled[i])
-  }
+  // ── Compose with a production budget that scales with vocab count.
+  // Intro pass and match-pairs are protected — they're the "learn it" portion.
+  const productionBudget = Math.max(PRODUCTION_FLOOR, items.length * PRODUCTION_PER_WORD)
+  const productionTrimmed = productionShuffled.slice(0, productionBudget)
 
-  return [...exercises, ...interleaved]
+  return [...introPass, ...matchPairs, ...productionTrimmed]
 }
 
 /**

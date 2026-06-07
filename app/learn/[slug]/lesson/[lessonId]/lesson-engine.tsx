@@ -11,7 +11,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import confetti from "canvas-confetti"
-import type { Exercise, MultipleChoiceExercise, TranslateExercise, MatchPairsExercise, SentenceBuilderExercise, InfoExercise } from "@/types/lesson"
+import type { Exercise, MultipleChoiceExercise, TranslateExercise, MatchPairsExercise, SentenceBuilderExercise, InfoExercise, WordIntroExercise } from "@/types/lesson"
 import { FontLoader } from "@/components/font-loader"
 
 type ScriptSymbol = { symbol: string; latin: string | null }
@@ -42,9 +42,22 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n]
 }
 
+function stripDiacritics(s: string): string {
+  return s.normalize("NFD").replace(/\p{M}+/gu, "")
+}
+
+function normalizeForCompare(s: string): string {
+  return stripDiacritics(s.trim().toLowerCase())
+}
+
 function isAnswerCorrect(userInput: string, expected: string): boolean {
-  const a = userInput.trim().toLowerCase()
-  const b = expected.trim().toLowerCase()
+  const raw = userInput.trim().toLowerCase()
+  const target = expected.trim().toLowerCase()
+  if (raw === target) return true
+  // Diacritic-insensitive compare: a missed combining mark shouldn't fail
+  // the learner. Normalize both sides before measuring edit distance.
+  const a = normalizeForCompare(raw)
+  const b = normalizeForCompare(target)
   if (a === b) return true
   // Allow 1 typo for words longer than 4 chars, 2 for words longer than 8
   const tolerance = b.length <= 4 ? 0 : b.length <= 8 ? 1 : 2
@@ -156,18 +169,12 @@ export function LessonEngine({
     }
   }, [current, feedback.status, selected, typedAnswer, hearts, selectedBuilderWords, recordMistake])
 
-  // ── Match-pairs wrong match — costs a heart, may end the lesson ────────────
+  // ── Match-pairs wrong match — counts toward accuracy but doesn't cost a
+  // heart. Match-pairs is a warm-up; the production round is where mistakes
+  // bite. This keeps the early lesson learner-friendly.
 
   const handleMatchWrong = useCallback(() => {
     setWrong(w => w + 1)
-    setHearts(h => {
-      const next = Math.max(0, h - 1)
-      if (next === 0) {
-        // Let the shake animation play, then show the fail screen.
-        setTimeout(() => setScreen("failed"), 550)
-      }
-      return next
-    })
   }, [])
 
   // ── Advance to next exercise ───────────────────────────────────────────────
@@ -250,7 +257,7 @@ export function LessonEngine({
           e.preventDefault()
           if (typedAnswer.trim()) checkAnswer()
         }
-        if (current?.type === "INFO" && (e.key === "Enter" || e.key === " ")) {
+        if ((current?.type === "INFO" || current?.type === "WORD_INTRO") && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault()
           advance()
         }
@@ -392,6 +399,13 @@ export function LessonEngine({
             {current.type === "INFO" && (
               <InfoCard exercise={current} />
             )}
+            {current.type === "WORD_INTRO" && (
+              <WordIntroCard
+                exercise={current}
+                scriptSymbols={scriptSymbols}
+                showRoman={showRoman}
+              />
+            )}
             {current.type === "MULTIPLE_CHOICE" && (
               <MultipleChoiceCard
                 exercise={current}
@@ -438,7 +452,7 @@ export function LessonEngine({
         )}>
           <div className="container mx-auto max-w-2xl px-4 py-4">
             {feedback.status === "answering" ? (
-              current.type === "INFO" ? (
+              current.type === "INFO" || current.type === "WORD_INTRO" ? (
                 <Button
                   size="lg"
                   className="w-full h-12 text-base font-semibold"
@@ -500,6 +514,75 @@ export function LessonEngine({
               </div>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Word Intro Card ──────────────────────────────────────────────────────────
+
+function WordIntroCard({
+  exercise, scriptSymbols, showRoman,
+}: {
+  exercise: WordIntroExercise
+  scriptSymbols: ScriptSymbol[]
+  showRoman: boolean
+}) {
+  const [revealed, setRevealed] = useState(false)
+  // Each new intro card resets reveal state.
+  useEffect(() => { setRevealed(false) }, [exercise.id])
+
+  const useScriptFont = !showRoman
+  const roman = showRoman ? romanize(exercise.word, scriptSymbols) : null
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center gap-2">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
+          <Sparkles className="h-5 w-5" />
+        </div>
+        <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+          New word
+        </span>
+      </div>
+
+      <div className="rounded-3xl border-2 border-border bg-card p-8 text-center space-y-4">
+        <p className={cn("text-6xl font-bold tracking-tight", useScriptFont && "font-custom-script")}>
+          {exercise.word}
+        </p>
+        {roman && roman !== exercise.word && (
+          <p className="text-2xl text-muted-foreground">{roman}</p>
+        )}
+        <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
+          {exercise.ipa && <span className="font-mono">/{exercise.ipa}/</span>}
+          {exercise.ipa && exercise.partOfSpeech && <span aria-hidden>·</span>}
+          {exercise.partOfSpeech && <span className="italic">{exercise.partOfSpeech}</span>}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setRevealed(true)}
+        disabled={revealed}
+        className={cn(
+          "w-full rounded-2xl border-2 border-b-4 px-5 py-5 text-lg font-semibold transition-all duration-150",
+          "active:border-b-2 active:translate-y-[2px] disabled:cursor-default",
+          revealed
+            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400"
+            : "border-border bg-card hover:border-primary/40 hover:bg-primary/5 text-foreground",
+        )}
+        aria-label={revealed ? "Translation revealed" : "Tap to reveal translation"}
+      >
+        {revealed ? exercise.gloss : "Tap to reveal translation"}
+      </button>
+
+      {revealed && exercise.example && (
+        <div className="rounded-2xl border border-border bg-muted/30 p-4 text-sm space-y-1 animate-in fade-in slide-in-from-bottom-1 duration-200">
+          <p className={cn("font-semibold", useScriptFont && "font-custom-script")}>
+            {exercise.example.sentence}
+          </p>
+          <p className="text-muted-foreground">{exercise.example.translation}</p>
         </div>
       )}
     </div>
@@ -600,6 +683,9 @@ function TranslateCard({
         <p className={cn("text-5xl font-bold tracking-tight", useScriptFont && "font-custom-script")}>{exercise.word}</p>
         {roman && roman !== exercise.word && (
           <p className="text-xl text-muted-foreground mt-2">{roman}</p>
+        )}
+        {exercise.hint && (
+          <p className="text-sm text-muted-foreground mt-3 font-mono">{exercise.hint}</p>
         )}
       </div>
 
@@ -853,7 +939,7 @@ function SentenceBuilderCard({
                 )}
               >
                 <span className={cn(!showRoman && "font-custom-script")}>{word.text}</span>
-                {showRoman && (() => { const r = romanize(word.text, scriptSymbols); return r !== word.text ? <span className="block text-xs font-normal opacity-60">{r}</span> : null })()}
+                {(() => { const r = romanize(word.text, scriptSymbols); return r !== word.text ? <span className="block text-xs font-normal opacity-60">{r}</span> : null })()}
               </button>
             )
           })}
@@ -875,7 +961,7 @@ function SentenceBuilderCard({
                 )}
               >
                 <span className={cn(!showRoman && "font-custom-script")}>{word.text}</span>
-                {showRoman && (() => { const r = romanize(word.text, scriptSymbols); return r !== word.text ? <span className="block text-xs font-normal opacity-60">{r}</span> : null })()}
+                {(() => { const r = romanize(word.text, scriptSymbols); return r !== word.text ? <span className="block text-xs font-normal opacity-60">{r}</span> : null })()}
               </button>
             )
           })}

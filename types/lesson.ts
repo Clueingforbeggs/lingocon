@@ -49,12 +49,33 @@ export interface InfoExercise {
   href?: string
 }
 
+/**
+ * Non-graded flashcard introducing a single vocabulary item.
+ * Shown before the learner is quizzed on the word — the equivalent of
+ * Duolingo's "tap the new word" card.
+ */
+export interface WordIntroExercise {
+  type: "WORD_INTRO"
+  id: string
+  /** Conlang word in the target language. */
+  word: string
+  /** Native gloss revealed after the learner taps. */
+  gloss: string
+  /** Optional IPA pronunciation (shown without slashes — wrap at render). */
+  ipa?: string
+  /** Optional part-of-speech tag (noun, verb, etc.). */
+  partOfSpeech?: string
+  /** Optional first example sentence pair, for richer context. */
+  example?: { sentence: string; translation: string }
+}
+
 export type Exercise =
   | MultipleChoiceExercise
   | TranslateExercise
   | MatchPairsExercise
   | SentenceBuilderExercise
   | InfoExercise
+  | WordIntroExercise
 
 // ─── Lesson Result ────────────────────────────────────────────────────────────
 

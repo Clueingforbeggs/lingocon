@@ -22,6 +22,8 @@ import {
     RotateCcw,
     Plus,
     X,
+    Check,
+    Delete,
 } from "lucide-react"
 import { updateLanguage } from "@/app/actions/language"
 import { IPAKeyboard } from "@/components/ipa-keyboard"
@@ -422,10 +424,12 @@ export function PhonologyView({ language, symbols }: PhonologyViewProps) {
                                     className="w-auto p-0"
                                     onOpenAutoFocus={(e) => e.preventDefault()}
                                 >
-                                    <IPAKeyboard
-                                        onSelect={handleAddPhoneme}
-                                        onClose={() => setAddPopoverOpen(false)}
-                                        currentValue=""
+                                    <PhonemeComposer
+                                        kind="consonants"
+                                        onCommit={(symbol) => {
+                                            handleAddPhoneme(symbol)
+                                            setAddPopoverOpen(false)
+                                        }}
                                     />
                                 </PopoverContent>
                             </Popover>
@@ -537,10 +541,12 @@ export function PhonologyView({ language, symbols }: PhonologyViewProps) {
                                     className="w-auto p-0"
                                     onOpenAutoFocus={(e) => e.preventDefault()}
                                 >
-                                    <IPAKeyboard
-                                        onSelect={handleAddPhoneme}
-                                        onClose={() => setAddPopoverOpen(false)}
-                                        currentValue=""
+                                    <PhonemeComposer
+                                        kind="vowels"
+                                        onCommit={(symbol) => {
+                                            handleAddPhoneme(symbol)
+                                            setAddPopoverOpen(false)
+                                        }}
                                     />
                                 </PopoverContent>
                             </Popover>
@@ -605,6 +611,94 @@ export function PhonologyView({ language, symbols }: PhonologyViewProps) {
                     {isSaving ? t("savingPhonology") : t("savePhonology")}
                 </Button>
             </div>
+        </div>
+    )
+}
+
+// ─── Phoneme Composer ────────────────────────────────────────────────────────
+// Wraps IPAKeyboard with a buffer so combining diacritics (e.g. nasalization ̃)
+// can attach to a base (e.g. ɑ) and be committed together as a single phoneme
+// like ɑ̃. Without this, each keyboard click commits immediately and combining
+// marks have no base to attach to.
+
+function PhonemeComposer({
+    kind,
+    onCommit,
+}: {
+    kind: "consonants" | "vowels"
+    onCommit: (symbol: string) => void
+}) {
+    const t = useTranslations("studio.phonology")
+    const [buffer, setBuffer] = useState("")
+
+    const handleAppend = (symbol: string) => {
+        // Appending — combining marks naturally attach to the previous base via
+        // normal Unicode rendering. Strip the dotted-circle placeholder the
+        // keyboard adds for visual hint to combining marks (it sends just the
+        // mark, but be defensive in case that changes).
+        const clean = symbol.replace(/◌/g, "")
+        setBuffer((prev) => prev + clean)
+    }
+
+    const handleBackspace = () => {
+        // Drop one code point (combining marks first, then the base char).
+        // Using NFC-aware splitter to handle surrogates safely.
+        setBuffer((prev) => {
+            if (!prev) return prev
+            const chars = Array.from(prev)
+            chars.pop()
+            return chars.join("")
+        })
+    }
+
+    const handleCommit = () => {
+        const trimmed = buffer.trim()
+        if (!trimmed) return
+        onCommit(trimmed)
+        setBuffer("")
+    }
+
+    return (
+        <div className="w-[400px] max-w-[95vw] flex flex-col">
+            {/* Buffer / preview */}
+            <div className="p-3 border-b flex items-center justify-between gap-2 bg-muted/30">
+                <div className="flex-1 font-ipa text-2xl min-h-[2rem] truncate">
+                    {buffer || (
+                        <span className="text-muted-foreground text-base">
+                            {kind === "vowels" ? t("composeHintVowel") : t("composeHintConsonant")}
+                        </span>
+                    )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleBackspace}
+                        disabled={!buffer}
+                        className="h-8 w-8"
+                        aria-label={t("backspace")}
+                    >
+                        <Delete className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleCommit}
+                        disabled={!buffer.trim()}
+                        className="gap-1.5"
+                    >
+                        <Check className="h-4 w-4" />
+                        {t("addToInventory")}
+                    </Button>
+                </div>
+            </div>
+
+            <IPAKeyboard
+                onSelect={handleAppend}
+                onDelete={handleBackspace}
+                currentValue=""
+            />
         </div>
     )
 }

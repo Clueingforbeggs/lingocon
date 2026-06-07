@@ -145,7 +145,7 @@ export default async function OverviewPage({
       </div>
 
       {warnings.length > 0 && (
-        <ValidationWarnings warnings={warnings} />
+        <ValidationWarnings warnings={warnings} scopeKey={language.id} />
       )}
 
       {/* Analytics Charts */}

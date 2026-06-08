@@ -9,20 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-export const CATEGORY_FILTER_VALUES = [
-  "all",
-  "CONLANG",
-  "NATURAL",
-  "ENDANGERED",
-  "RESTORED",
-  "HISTORICAL",
-  "FICTIONAL",
-  "AUXILIARY",
-  "OTHER",
-] as const
-
-export type CategoryFilter = (typeof CATEGORY_FILTER_VALUES)[number]
+import type { CategoryFilter } from "./category-filter-values"
 
 interface CategoryFilterProps {
   currentCategory: CategoryFilter

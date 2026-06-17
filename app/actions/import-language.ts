@@ -3,42 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { getUserId } from "@/lib/auth-helpers"
 import { createActivity } from "@/lib/utils/activity"
-import { z } from "zod"
-
-// Schema for generic import format (e.g. third-party tools)
-const genericSchema = z.object({
-    name: z.string(),
-    description: z.string().nullable().optional(),
-    lexicon: z.array(z.object({
-        word: z.string(),
-        definition: z.string(),
-        ipa: z.string().optional(),
-        pos: z.string().optional(),
-        etymology: z.string().optional(),
-    }).passthrough())
-}).passthrough()
-
-// Schema for LingoCon's own export format
-const lingoconSchema = z.object({
-    name: z.string(),
-    description: z.string().nullable().optional(),
-    dictionaryEntries: z.array(z.object({
-        lemma: z.string(),
-        gloss: z.string(),
-        ipa: z.string().nullable().optional(),
-        partOfSpeech: z.string().nullable().optional(),
-        notes: z.string().nullable().optional(),
-        etymology: z.string().nullable().optional(),
-        tags: z.array(z.string()).optional(),
-    }).passthrough()).optional().default([]),
-    scriptSymbols: z.array(z.object({
-        symbol: z.string(),
-        ipa: z.string().nullable().optional(),
-        latin: z.string().nullable().optional(),
-        name: z.string().nullable().optional(),
-        order: z.number().optional(),
-    }).passthrough()).optional().default([]),
-}).passthrough()
+import { parseImportPayload } from "@/lib/validations/import-language"
 
 export async function importLanguage(jsonContent: string) {
     const userId = await getUserId()
@@ -52,20 +17,13 @@ export async function importLanguage(jsonContent: string) {
     try {
         const rawData = JSON.parse(jsonContent)
 
-        // Try LingoCon native format first, then fall back to generic
-        const lingoconResult = lingoconSchema.safeParse(rawData)
-        const genericResult = genericSchema.safeParse(rawData)
-
-        if (!lingoconResult.success && !genericResult.success) {
-            // Show the more relevant error
-            const err = rawData?.dictionaryEntries ? lingoconResult.error : genericResult.error
-            return {
-                error: "Invalid JSON format: " + err.issues.map(i => i.message).join(", ")
-            }
+        const parsed = parseImportPayload(rawData)
+        if ("error" in parsed) {
+            return { error: parsed.error }
         }
 
-        const isLingocon = lingoconResult.success
-        const validData = isLingocon ? lingoconResult.data : genericResult.data!
+        const isLingocon = parsed.format === "lingocon"
+        const validData = parsed.data
 
         // Generate a unique slug
         let slug = validData.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
@@ -107,9 +65,9 @@ export async function importLanguage(jsonContent: string) {
             notes: string | null
         }[]
 
-        if (isLingocon) {
-            const data = lingoconResult.data
-            entriesToCreate = data.dictionaryEntries
+        if (parsed.format === "lingocon") {
+            const data = parsed.data
+            entriesToCreate = (data.dictionaryEntries ?? [])
                 .filter(entry => entry.lemma && entry.gloss)
                 .map(entry => ({
                     languageId: language.id,
@@ -121,7 +79,7 @@ export async function importLanguage(jsonContent: string) {
                     notes: entry.notes ?? null,
                 }))
         } else {
-            const data = genericResult.data!
+            const data = parsed.data
             entriesToCreate = data.lexicon
                 .filter(entry => entry.word && entry.definition)
                 .map(entry => ({
@@ -143,9 +101,9 @@ export async function importLanguage(jsonContent: string) {
         }
 
         // Import script symbols from LingoCon format
-        if (isLingocon && lingoconResult.data.scriptSymbols.length > 0) {
+        if (parsed.format === "lingocon" && (parsed.data.scriptSymbols ?? []).length > 0) {
             await prisma.scriptSymbol.createMany({
-                data: lingoconResult.data.scriptSymbols.map((s, i) => ({
+                data: (parsed.data.scriptSymbols ?? []).map((s, i) => ({
                     languageId: language.id,
                     symbol: s.symbol,
                     ipa: s.ipa ?? null,

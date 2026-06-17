@@ -18,12 +18,14 @@ export function ItemRow({
 }) {
   const [deleting, setDeleting] = useState(false)
 
-  const label =
-    item.type === "VOCAB"    && item.dictEntry   ? `${item.dictEntry.lemma} — ${item.dictEntry.gloss}`
-    : item.type === "GRAMMAR"  && item.grammarPage ? item.grammarPage.title
-    : item.type === "TEXT"     && item.text        ? item.text.title
-    : item.type === "SENTENCE" && item.sentence    ? item.sentence.sentence
-    : "Unknown item"
+  // Conlang-script text (vocab lemma, sentence) renders in the language font so
+  // custom glyphs display correctly; English glosses/titles stay in the UI font.
+  const primary: { text: string; script: boolean; gloss?: string } =
+    item.type === "VOCAB"    && item.dictEntry   ? { text: item.dictEntry.lemma, script: true, gloss: item.dictEntry.gloss }
+    : item.type === "GRAMMAR"  && item.grammarPage ? { text: item.grammarPage.title, script: false }
+    : item.type === "TEXT"     && item.text        ? { text: item.text.title, script: false }
+    : item.type === "SENTENCE" && item.sentence    ? { text: item.sentence.sentence, script: true }
+    : { text: "Unknown item", script: false }
 
   const sublabel =
     item.type === "SENTENCE" && item.sentence    ? item.sentence.translation
@@ -41,7 +43,10 @@ export function ItemRow({
       <MoveControls canUp={canUp} canDown={canDown} onMove={onMove} label="item" />
       <div className="shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">
-        <span className="text-sm truncate block">{label}</span>
+        <span className="text-sm truncate block">
+          <span className={primary.script ? "font-custom-script" : undefined}>{primary.text}</span>
+          {primary.gloss && <span className="text-muted-foreground"> — {primary.gloss}</span>}
+        </span>
         {sublabel && <span className="text-xs text-muted-foreground truncate block">{sublabel}</span>}
       </div>
       <button

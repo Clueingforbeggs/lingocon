@@ -403,7 +403,7 @@ export function AddItemDialog({
                               {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <span className={cn("block truncate font-medium", type === "VOCAB" ? "font-serif" : "")}>{opt.label}</span>
+                              <span className={cn("block truncate font-medium", (type === "VOCAB" || type === "SENTENCE") ? "font-custom-script" : "")}>{opt.label}</span>
                               {opt.sub && <span className="block truncate text-xs text-muted-foreground">{opt.sub}</span>}
                             </div>
                           </button>
@@ -462,7 +462,7 @@ export function AddItemDialog({
                     <Label>Link to word <span className="text-muted-foreground text-xs font-normal">(required)</span></Label>
                     {sentDictEntry ? (
                       <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2 bg-secondary/30">
-                        <span className="flex-1 text-sm font-serif font-medium">{sentDictEntry.lemma}</span>
+                        <span className="flex-1 text-sm font-custom-script font-medium">{sentDictEntry.lemma}</span>
                         <span className="text-xs text-muted-foreground">{sentDictEntry.gloss}</span>
                         <button onClick={() => setSentDictEntry(null)} className="text-muted-foreground hover:text-destructive">
                           <X className="h-3.5 w-3.5" />
@@ -491,7 +491,7 @@ export function AddItemDialog({
                                 onClick={() => { setSentDictEntry(e); setWordPickerOpen(false); setWordPickerQuery("") }}
                                 className="w-full px-3 py-2 text-left text-sm hover:bg-secondary/60 flex items-center gap-2"
                               >
-                                <span className="font-serif font-medium">{e.lemma}</span>
+                                <span className="font-custom-script font-medium">{e.lemma}</span>
                                 <span className="text-muted-foreground text-xs">{e.gloss}</span>
                               </button>
                             ))}

@@ -1030,7 +1030,7 @@
   "i18n": {
     "switcherLabel": "Interface Language",
     "english": "English",
-    "freeRussian": "Free Russian",
+    "freeRussian": "Russian",
     "conlangTranslations": "Conlang Translations",
     "translated": "{percent}% translated",
     "addConlang": "Add your conlang",

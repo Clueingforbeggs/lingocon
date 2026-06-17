@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getUserId, canViewLanguage } from "@/lib/auth-helpers"
+import { getUserId, canViewLanguage, canEditLanguage } from "@/lib/auth-helpers"
 import { isRuntimeMethod, permissionForMethod } from "@/lib/modules/runtime-protocol"
 import { loadModuleData } from "@/lib/modules/data"
 
@@ -43,8 +43,14 @@ export async function POST(req: Request) {
   // Permission gate: methods that touch data require a granted permission.
   const required = permissionForMethod(method)
   if (required) {
+    // Data access is authorized by the OWNER's install (this is what powers
+    // public reader widgets). A viewer's own install only counts when they can
+    // edit this language — otherwise a logged-in visitor could use a personal
+    // account-wide install to read any language they can merely view (#32).
     const candidateUserIds = [language.ownerId]
-    if (userId && userId !== language.ownerId) candidateUserIds.push(userId)
+    if (userId && userId !== language.ownerId && (await canEditLanguage(languageId, userId))) {
+      candidateUserIds.push(userId)
+    }
 
     const install = await prisma.moduleInstall.findFirst({
       where: {

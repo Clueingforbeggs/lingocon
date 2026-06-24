@@ -1,8 +1,9 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { NumberTicker } from "@/components/ui/number-ticker"
+import { getIntlLocale } from "@/lib/i18n/config"
 
 const Globe = dynamic(
     () => import("@/components/ui/globe").then((m) => m.Globe),
@@ -20,6 +21,7 @@ export function CommunityGlobe({
 }) {
     const t = useTranslations("landing.globe")
     const tStats = useTranslations("landing.socialProof")
+    const intlLocale = getIntlLocale(useLocale())
     const stats = [
         { key: "languages", label: tStats("languages"), value: languageCount },
         { key: "words", label: tStats("words"), value: wordCount },
@@ -42,7 +44,7 @@ export function CommunityGlobe({
                 {stats.map((s) => (
                     <div key={s.key}>
                         <div className="text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
-                            <NumberTicker value={s.value} className="text-foreground" />
+                            <NumberTicker value={s.value} locale={intlLocale} className="text-foreground" />
                             {s.value >= 25 ? "+" : ""}
                         </div>
                         <div className="mt-1 text-sm font-medium text-muted-foreground">

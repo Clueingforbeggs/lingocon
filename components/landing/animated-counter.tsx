@@ -9,6 +9,8 @@ interface AnimatedCounterProps {
     prefix?: string
     className?: string
     duration?: number
+    /** BCP-47 locale for number grouping (e.g. "en", "ru", "uk"). */
+    locale?: string
 }
 
 export function AnimatedCounter({
@@ -17,6 +19,7 @@ export function AnimatedCounter({
     prefix = "",
     className,
     duration = 2,
+    locale = "en",
 }: AnimatedCounterProps) {
     const ref = useRef<HTMLSpanElement>(null)
     const isInView = useInView(ref, { once: true, margin: "-100px" })
@@ -37,17 +40,17 @@ export function AnimatedCounter({
     useEffect(() => {
         const unsubscribe = springValue.on("change", (latest) => {
             if (ref.current) {
-                const formatted = formatNumber(Math.round(latest))
+                const formatted = formatNumber(Math.round(latest), locale)
                 ref.current.textContent = `${prefix}${formatted}${suffix}`
             }
         })
         return unsubscribe
-    }, [springValue, prefix, suffix])
+    }, [springValue, prefix, suffix, locale])
 
     if (prefersReducedMotion) {
         return (
             <span ref={ref} className={className}>
-                {prefix}{formatNumber(target)}{suffix}
+                {prefix}{formatNumber(target, locale)}{suffix}
             </span>
         )
     }
@@ -59,9 +62,9 @@ export function AnimatedCounter({
     )
 }
 
-function formatNumber(n: number): string {
+function formatNumber(n: number, locale: string): string {
     if (n >= 1000) {
-        return n.toLocaleString("en-US")
+        return n.toLocaleString(locale)
     }
     return n.toString()
 }

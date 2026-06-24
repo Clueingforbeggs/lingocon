@@ -1,7 +1,8 @@
 "use client"
 
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { AnimatedCounter } from "@/components/landing/animated-counter"
+import { getIntlLocale } from "@/lib/i18n/config"
 
 interface HeroSocialProofProps {
     languageCount: number
@@ -11,6 +12,7 @@ interface HeroSocialProofProps {
 
 export function HeroSocialProof({ languageCount, wordCount, userCount }: HeroSocialProofProps) {
     const t = useTranslations("landing.socialProof")
+    const intlLocale = getIntlLocale(useLocale())
     const items = [
         { key: "languages", value: languageCount, label: t("languages") },
         { key: "words", value: wordCount, label: t("words") },
@@ -24,7 +26,7 @@ export function HeroSocialProof({ languageCount, wordCount, userCount }: HeroSoc
                     {i > 0 && <span className="hidden h-4 w-px bg-border/70 sm:block" aria-hidden />}
                     <span className="flex items-baseline gap-1.5">
                         <span className="font-mono font-semibold text-foreground tabular-nums">
-                            <AnimatedCounter target={item.value} />
+                            <AnimatedCounter target={item.value} locale={intlLocale} />
                         </span>
                         <span>{item.label}</span>
                     </span>

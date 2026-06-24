@@ -26,6 +26,17 @@ export const naturalLocales: NaturalLocale[] = [
 // Cookie name for storing locale preference
 export const LOCALE_COOKIE = 'NEXT_LOCALE'
 
+// Maps an app locale (including the legacy `free-ru` code and `conlang:<id>`
+// values) to a BCP-47 tag that Intl understands, so numbers/dates are grouped
+// and formatted per language — e.g. Russian and Ukrainian group thousands with
+// a space (1 234), English with a comma (1,234). Conlangs and unknown values
+// fall back to English.
+export function getIntlLocale(locale: string): string {
+  if (locale === 'free-ru') return 'ru'
+  if (locale === 'uk') return 'uk'
+  return 'en'
+}
+
 // Total translatable key count (used for percentage calculation)
 export function getTotalKeyCount(messages: Record<string, any>): number {
   let count = 0;

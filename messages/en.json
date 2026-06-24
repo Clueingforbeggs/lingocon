@@ -400,6 +400,26 @@
     "etymologyFromLingocon": "Borrowed from {lang}: [{word}]",
     "etymologyFromReal": "Borrowed from {lang}: \"{word}\""
   },
+  "wordGen": {
+    "title": "Word Generator",
+    "desc": "Generate phonotactically valid words from your language's phonology.",
+    "usingPhonology": "Using your language's phonology settings",
+    "structure": "Structure: {value}",
+    "eachSyllable": "Each syllable: {template}",
+    "slotConsonant": "consonant",
+    "slotVowel": "vowel",
+    "minSyllables": "Min syllables",
+    "maxSyllables": "Max syllables",
+    "count": "Count",
+    "regenerate": "Regenerate",
+    "generateN": "Generate {count} Words",
+    "copy": "Copy",
+    "addToDict": "Add to dictionary",
+    "noPhonemesTitle": "No phonemes detected",
+    "noPhonemesDesc": "Add script symbols with IPA values in the Alphabet tab, or define phonemes manually in the Phonology tab.",
+    "toastNoPhonemes": "No phonemes found. Add script symbols with IPA values first.",
+    "toastNoWords": "Could not generate any unique words with these settings. Try adjusting syllable count or structure."
+  },
   "courseEditor": {
     "courseUpdated": "Course updated",
     "itemAdded": "Item added",

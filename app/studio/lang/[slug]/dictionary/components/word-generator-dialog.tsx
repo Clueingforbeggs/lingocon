@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sparkles, Plus, RefreshCw, Copy, Check, Info } from "lucide-react"
 import { generateWords, parseSyllableStructure, buildPhonemeWeights } from "@/lib/utils/word-generator"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import type { ScriptSymbol } from "@prisma/client"
 import type { LanguageMetadata } from "@/lib/validations/language"
 
@@ -94,6 +95,8 @@ export function WordGeneratorDialog({
     existingLemmas,
     onAddWord,
 }: WordGeneratorDialogProps) {
+    const t = useTranslations("wordGen")
+    const tPhon = useTranslations("studio.phonology")
     const [count, setCount] = useState(20)
     const [minSyllables, setMinSyllables] = useState(1)
     const [maxSyllables, setMaxSyllables] = useState(3)
@@ -145,7 +148,7 @@ export function WordGeneratorDialog({
 
     const handleGenerate = () => {
         if (!hasPhonemes) {
-            toast.error("No phonemes found. Add script symbols with IPA values first.")
+            toast.error(t("toastNoPhonemes"))
             return
         }
 
@@ -162,7 +165,7 @@ export function WordGeneratorDialog({
 
         setGeneratedWords(words)
         if (words.length === 0) {
-            toast.warning("Could not generate any unique words with these settings. Try adjusting syllable count or structure.")
+            toast.warning(t("toastNoWords"))
         }
     }
 
@@ -179,7 +182,7 @@ export function WordGeneratorDialog({
 
     // Build a human-readable template description
     const templateDesc = slots.map(s => {
-        const label = s.type === "C" ? "consonant" : "vowel"
+        const label = s.type === "C" ? t("slotConsonant") : t("slotVowel")
         return s.optional ? `(${label})` : label
     }).join(" + ")
 
@@ -189,10 +192,10 @@ export function WordGeneratorDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Sparkles className="h-5 w-5 text-primary" />
-                        Word Generator
+                        {t("title")}
                     </DialogTitle>
                     <DialogDescription>
-                        Generate phonotactically valid words from your language&apos;s phonology.
+                        {t("desc")}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -201,22 +204,22 @@ export function WordGeneratorDialog({
                     <div className="rounded-lg bg-muted/50 p-3 space-y-2 text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground">
                             <Info className="h-3.5 w-3.5 shrink-0" />
-                            <span>Using your language&apos;s phonology settings</span>
+                            <span>{t("usingPhonology")}</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                             <Badge variant="outline" className="text-xs">
-                                Structure: {syllableStructure || "CV"}
+                                {t("structure", { value: syllableStructure || "CV" })}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
-                                {consonants.length} consonants
+                                {tPhon("consonants", { count: consonants.length })}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
-                                {vowels.length} vowels
+                                {tPhon("vowels", { count: vowels.length })}
                             </Badge>
                         </div>
                         {templateDesc && (
                             <p className="text-xs text-muted-foreground">
-                                Each syllable: {templateDesc}
+                                {t("eachSyllable", { template: templateDesc })}
                             </p>
                         )}
                     </div>
@@ -224,7 +227,7 @@ export function WordGeneratorDialog({
                     {/* Controls */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Min syllables</Label>
+                            <Label className="text-xs">{t("minSyllables")}</Label>
                             <Input
                                 type="number"
                                 min={1}
@@ -234,7 +237,7 @@ export function WordGeneratorDialog({
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Max syllables</Label>
+                            <Label className="text-xs">{t("maxSyllables")}</Label>
                             <Input
                                 type="number"
                                 min={1}
@@ -244,7 +247,7 @@ export function WordGeneratorDialog({
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Count</Label>
+                            <Label className="text-xs">{t("count")}</Label>
                             <Input
                                 type="number"
                                 min={1}
@@ -264,12 +267,12 @@ export function WordGeneratorDialog({
                         {generatedWords.length > 0 ? (
                             <>
                                 <RefreshCw className="h-4 w-4" />
-                                Regenerate
+                                {t("regenerate")}
                             </>
                         ) : (
                             <>
                                 <Sparkles className="h-4 w-4" />
-                                Generate {count} Words
+                                {t("generateN", { count })}
                             </>
                         )}
                     </Button>
@@ -290,7 +293,7 @@ export function WordGeneratorDialog({
                                                 size="icon"
                                                 className="h-9 w-9 sm:h-8 sm:w-8"
                                                 onClick={() => handleCopy(word, idx)}
-                                                title="Copy"
+                                                title={t("copy")}
                                             >
                                                 {copiedIdx === idx ? (
                                                     <Check className="h-3 w-3 text-green-500" />
@@ -303,7 +306,7 @@ export function WordGeneratorDialog({
                                                 size="icon"
                                                 className="h-9 w-9 sm:h-8 sm:w-8 text-primary"
                                                 onClick={() => handleAddWord(word)}
-                                                title="Add to dictionary"
+                                                title={t("addToDict")}
                                             >
                                                 <Plus className="h-3 w-3" />
                                             </Button>
@@ -316,8 +319,8 @@ export function WordGeneratorDialog({
 
                     {!hasPhonemes && (
                         <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground text-sm">
-                            <p className="font-medium mb-1">No phonemes detected</p>
-                            <p>Add script symbols with IPA values in the Alphabet tab, or define phonemes manually in the Phonology tab.</p>
+                            <p className="font-medium mb-1">{t("noPhonemesTitle")}</p>
+                            <p>{t("noPhonemesDesc")}</p>
                         </div>
                     )}
                 </div>

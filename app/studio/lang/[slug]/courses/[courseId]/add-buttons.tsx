@@ -11,9 +11,11 @@ import {
 import { Plus, Loader2, FolderPlus } from "lucide-react"
 import { createLesson, createLessonInUnit, createUnit } from "@/app/actions/learn"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import type { Lesson, Unit } from "./types"
 
 export function AddLessonButton({ courseId, unitId, onAdded }: { courseId: string; unitId: string | null; onAdded: (l: Lesson) => void }) {
+  const t = useTranslations("courseEditor")
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -30,12 +32,12 @@ export function AddLessonButton({ courseId, unitId, onAdded }: { courseId: strin
         setOpen(false)
         setTitle("")
         setDescription("")
-        toast.success("Lesson added")
+        toast.success(t("lessonAdded"))
       } else {
-        toast.error(r.error ?? "Failed to add lesson")
+        toast.error(r.error ?? t("failAddLesson"))
       }
     } catch {
-      toast.error("Failed to add lesson")
+      toast.error(t("failAddLesson"))
     } finally {
       setLoading(false)
     }
@@ -46,25 +48,25 @@ export function AddLessonButton({ courseId, unitId, onAdded }: { courseId: strin
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
-          Add Lesson
+          {t("addLesson")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>New Lesson</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("newLesson")}</DialogTitle></DialogHeader>
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="space-y-2">
-            <Label>Title</Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Greetings" required autoFocus />
+            <Label>{t("title")}</Label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t("titlePh")} required autoFocus />
           </div>
           <div className="space-y-2">
-            <Label>Description <span className="text-muted-foreground">(optional)</span></Label>
+            <Label>{t("description")} <span className="text-muted-foreground">{t("optional")}</span></Label>
             <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
             <Button type="submit" disabled={loading || !title.trim()} className="gap-2">
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Add
+              {t("add")}
             </Button>
           </DialogFooter>
         </form>
@@ -75,6 +77,7 @@ export function AddLessonButton({ courseId, unitId, onAdded }: { courseId: strin
 
 /** Add-lesson button bound to a specific unit; resolves courseId via the unit. */
 export function AddLessonButtonForUnit({ unitId, onAdded }: { unitId: string; onAdded: (l: Lesson) => void }) {
+  const t = useTranslations("courseEditor")
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -91,12 +94,12 @@ export function AddLessonButtonForUnit({ unitId, onAdded }: { unitId: string; on
         setOpen(false)
         setTitle("")
         setDescription("")
-        toast.success("Lesson added")
+        toast.success(t("lessonAdded"))
       } else {
-        toast.error("Failed to add lesson")
+        toast.error(t("failAddLesson"))
       }
     } catch {
-      toast.error("Failed to add lesson")
+      toast.error(t("failAddLesson"))
     } finally {
       setLoading(false)
     }
@@ -107,25 +110,25 @@ export function AddLessonButtonForUnit({ unitId, onAdded }: { unitId: string; on
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="w-full gap-2">
           <Plus className="h-4 w-4" />
-          Add Lesson to Unit
+          {t("addLessonToUnit")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>Add Lesson</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("addLesson")}</DialogTitle></DialogHeader>
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="space-y-2">
-            <Label>Title</Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Greetings" required autoFocus />
+            <Label>{t("title")}</Label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t("titlePh")} required autoFocus />
           </div>
           <div className="space-y-2">
-            <Label>Description <span className="text-muted-foreground">(optional)</span></Label>
+            <Label>{t("description")} <span className="text-muted-foreground">{t("optional")}</span></Label>
             <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
             <Button type="submit" disabled={loading || !title.trim()} className="gap-2">
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Add
+              {t("add")}
             </Button>
           </DialogFooter>
         </form>
@@ -135,6 +138,7 @@ export function AddLessonButtonForUnit({ unitId, onAdded }: { unitId: string; on
 }
 
 export function AddUnitButton({ courseId, onAdded }: { courseId: string; onAdded: (u: Unit) => void }) {
+  const t = useTranslations("courseEditor")
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -151,12 +155,12 @@ export function AddUnitButton({ courseId, onAdded }: { courseId: string; onAdded
         setOpen(false)
         setTitle("")
         setDescription("")
-        toast.success("Unit added")
+        toast.success(t("unitAdded"))
       } else {
-        toast.error("Failed to add unit")
+        toast.error(t("failAddUnit"))
       }
     } catch {
-      toast.error("Failed to add unit")
+      toast.error(t("failAddUnit"))
     } finally {
       setLoading(false)
     }
@@ -167,25 +171,25 @@ export function AddUnitButton({ courseId, onAdded }: { courseId: string; onAdded
       <DialogTrigger asChild>
         <Button variant="secondary" className="w-full gap-2">
           <FolderPlus className="h-4 w-4" />
-          Add Unit
+          {t("addUnit")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>Add Unit</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("addUnit")}</DialogTitle></DialogHeader>
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="space-y-2">
-            <Label>Title</Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Basics" required autoFocus />
+            <Label>{t("title")}</Label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t("unitTitlePh")} required autoFocus />
           </div>
           <div className="space-y-2">
-            <Label>Description <span className="text-muted-foreground">(optional)</span></Label>
+            <Label>{t("description")} <span className="text-muted-foreground">{t("optional")}</span></Label>
             <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
             <Button type="submit" disabled={loading || !title.trim()} className="gap-2">
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Add
+              {t("add")}
             </Button>
           </DialogFooter>
         </form>

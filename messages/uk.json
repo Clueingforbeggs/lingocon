@@ -454,7 +454,16 @@
     "noUnit": "Без розділу",
     "courseTitlePh": "Назва курсу",
     "add": "Додати",
-    "addLessonToUnit": "Додати урок до розділу"
+    "addLessonToUnit": "Додати урок до розділу",
+    "coursePublished": "Курс опубліковано",
+    "movedToDraft": "Переміщено в чернетки",
+    "lessonsNotInUnit": "Уроки без розділу",
+    "itemsCount": "{count} {count, plural, one {елемент} few {елементи} many {елементів} other {елемента}}",
+    "save": "Зберегти",
+    "noItemsYet": "Елементів поки немає — додайте вміст нижче.",
+    "deleteLesson": "Видалити урок",
+    "unitLabel": "Розділ {index}",
+    "noLessonsYet": "У цьому розділі поки немає уроків."
   },
   "studio": {
     "common": {

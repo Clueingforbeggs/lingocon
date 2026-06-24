@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { updateUnit, deleteUnit } from "@/app/actions/learn"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import { LessonCard } from "./lesson-card"
 import { AddLessonButtonForUnit } from "./add-buttons"
 import type { Unit, Lesson, LessonItem, GrammarPage, TextItem } from "./types"
@@ -46,6 +47,7 @@ export function UnitSection({
   onDeleteLesson, onItemAdded, onItemDeleted, onMoveItem, onUpdateLesson, onSetUnit,
   onLessonAdded, onUnitUpdated, onUnitDeleted,
 }: UnitSectionProps) {
+  const t = useTranslations("courseEditor")
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(unit.title)
   const [busy, setBusy] = useState(false)
@@ -59,9 +61,9 @@ export function UnitSection({
     if (r.data) {
       onUnitUpdated({ ...unit, title: trimmed })
       setEditing(false)
-      toast.success("Unit renamed")
+      toast.success(t("unitRenamed"))
     } else {
-      toast.error("Failed to rename")
+      toast.error(t("failRename"))
     }
   }
 
@@ -71,9 +73,9 @@ export function UnitSection({
     setBusy(false)
     if (r.data) {
       onUnitDeleted()
-      toast.success("Unit deleted")
+      toast.success(t("unitDeleted"))
     } else {
-      toast.error("Failed to delete unit")
+      toast.error(t("failDeleteUnit"))
     }
   }
 
@@ -81,7 +83,7 @@ export function UnitSection({
     <div className="rounded-2xl border border-border/60 bg-card/40 p-4">
       <div className="mb-3 flex items-center gap-2">
         <span className="inline-flex h-6 items-center rounded-full bg-primary/10 px-2.5 text-xs font-semibold text-primary">
-          Unit {index + 1}
+          {t("unitLabel", { index: index + 1 })}
         </span>
         {editing ? (
           <div className="flex flex-1 items-center gap-2">
@@ -139,7 +141,7 @@ export function UnitSection({
           />
         ))}
         {lessons.length === 0 && (
-          <p className="py-1 text-sm text-muted-foreground">No lessons in this unit yet.</p>
+          <p className="py-1 text-sm text-muted-foreground">{t("noLessonsYet")}</p>
         )}
         <AddLessonButtonForUnit unitId={unit.id} onAdded={onLessonAdded} />
       </div>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { updateLesson, deleteLessonItem } from "@/app/actions/learn"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import { MoveControls } from "./move-controls"
 import { ItemRow } from "./item-row"
 import { AddItemDialog } from "./add-item-dialog"
@@ -45,6 +46,7 @@ export function LessonCard({
   grammarPages, texts,
   onDelete, onItemAdded, onItemDeleted, onMoveItem, onUpdateLesson, onSetUnit, onMove,
 }: LessonCardProps) {
+  const t = useTranslations("courseEditor")
   const [deleting, setDeleting] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState(lesson.title)
@@ -64,9 +66,9 @@ export function LessonCard({
     if (r.data) {
       onUpdateLesson({ title: trimmed, description: editDesc.trim() || null })
       setEditingTitle(false)
-      toast.success("Lesson updated")
+      toast.success(t("lessonUpdated"))
     } else {
-      toast.error("Failed to update lesson")
+      toast.error(t("failUpdateLesson"))
     }
   }
 
@@ -91,7 +93,7 @@ export function LessonCard({
                 <span className="ml-2 text-xs text-muted-foreground">{lesson.description}</span>
               )}
             </div>
-            <Badge variant="secondary" className="text-xs shrink-0">{lesson.items.length} items</Badge>
+            <Badge variant="secondary" className="text-xs shrink-0">{t("itemsCount", { count: lesson.items.length })}</Badge>
             {expanded
               ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -119,7 +121,7 @@ export function LessonCard({
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               autoFocus
-              placeholder="Lesson title"
+              placeholder={t("lessonTitlePh")}
               onKeyDown={(e) => {
                 if (e.key === "Enter") saveTitle()
                 if (e.key === "Escape") setEditingTitle(false)
@@ -128,16 +130,16 @@ export function LessonCard({
             <Textarea
               value={editDesc}
               onChange={(e) => setEditDesc(e.target.value)}
-              placeholder="Description (optional)"
+              placeholder={t("descriptionOptionalPh")}
               rows={2}
               className="text-sm"
             />
             <div className="flex gap-2">
               <Button size="sm" onClick={saveTitle} disabled={busy || !editTitle.trim()} className="gap-1">
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                Save
+                {t("save")}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setEditingTitle(false)}>Cancel</Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingTitle(false)}>{t("cancel")}</Button>
             </div>
           </div>
         )}
@@ -159,7 +161,7 @@ export function LessonCard({
                 />
               ))}
               {lesson.items.length === 0 && (
-                <p className="text-sm text-muted-foreground py-2">No items yet — add content below.</p>
+                <p className="text-sm text-muted-foreground py-2">{t("noItemsYet")}</p>
               )}
             </div>
 
@@ -179,10 +181,10 @@ export function LessonCard({
                   onValueChange={(v) => onSetUnit(v === "none" ? null : v)}
                 >
                   <SelectTrigger className="h-8 w-[160px] text-xs">
-                    <SelectValue placeholder="No unit" />
+                    <SelectValue placeholder={t("noUnit")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No unit</SelectItem>
+                    <SelectItem value="none">{t("noUnit")}</SelectItem>
                     {units.map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.title}</SelectItem>
                     ))}
@@ -201,7 +203,7 @@ export function LessonCard({
                 }}
               >
                 {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                Delete Lesson
+                {t("deleteLesson")}
               </Button>
             </div>
           </CardContent>

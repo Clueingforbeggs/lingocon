@@ -12,6 +12,7 @@ import {
   updateCourse, deleteLesson, setLessonUnit, reorderLessons, reorderUnits, reorderLessonItems,
 } from "@/app/actions/learn"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { UnitSection } from "./unit-section"
 import { LessonCard } from "./lesson-card"
@@ -37,6 +38,7 @@ interface Props {
 // ── Course editor (root) ──────────────────────────────────────────────────────
 
 export function CourseEditor({ course: initialCourse, language, grammarPages, texts, slug }: Props) {
+  const t = useTranslations("courseEditor")
   const [course, setCourse] = useState(initialCourse)
 
   // Visibility
@@ -66,10 +68,10 @@ export function CourseEditor({ course: initialCourse, language, grammarPages, te
       const result = await updateCourse(course.id, { visibility: next })
       if (result.data) {
         setCourse(prev => ({ ...prev, visibility: next }))
-        toast.success(next === "PUBLISHED" ? "Course published" : "Moved to draft")
+        toast.success(next === "PUBLISHED" ? t("coursePublished") : t("movedToDraft"))
       }
     } catch {
-      toast.error("Failed to update")
+      toast.error(t("failUpdate"))
     } finally {
       setSavingVisibility(false)
     }
@@ -84,12 +86,12 @@ export function CourseEditor({ course: initialCourse, language, grammarPages, te
       if (r.data) {
         setCourse(prev => ({ ...prev, title, description: editDesc.trim() || null }))
         setEditingHeader(false)
-        toast.success("Course updated")
+        toast.success(t("courseUpdated"))
       } else {
-        toast.error("Failed to update course")
+        toast.error(t("failUpdateCourse"))
       }
     } catch {
-      toast.error("Failed to update course")
+      toast.error(t("failUpdateCourse"))
     } finally {
       setSavingHeader(false)
     }
@@ -121,7 +123,7 @@ export function CourseEditor({ course: initialCourse, language, grammarPages, te
       ),
     }))
     const r = await reorderLessonItems(lessonId, newIds)
-    if (r.error) toast.error("Failed to reorder items")
+    if (r.error) toast.error(t("failReorderItems"))
   }
 
   const unitsSorted = [...course.units].sort((a, b) => a.order - b.order)
@@ -133,7 +135,7 @@ export function CourseEditor({ course: initialCourse, language, grammarPages, te
     const r = await deleteLesson(lessonId)
     if (r.data) {
       setCourse(prev => ({ ...prev, lessons: prev.lessons.filter(l => l.id !== lessonId) }))
-      toast.success("Lesson deleted")
+      toast.success(t("lessonDeleted"))
     }
   }
 
@@ -159,7 +161,7 @@ export function CourseEditor({ course: initialCourse, language, grammarPages, te
       lessons: prev.lessons.map(l => (l.id === lessonId ? { ...l, unitId } : l)),
     }))
     const r = await setLessonUnit(lessonId, unitId)
-    if (r.error) toast.error("Failed to move lesson")
+    if (r.error) toast.error(t("failMoveLesson"))
   }
 
   async function handleMoveLesson(lessonId: string, unitId: string | null, dir: "up" | "down") {
@@ -176,7 +178,7 @@ export function CourseEditor({ course: initialCourse, language, grammarPages, te
       lessons: prev.lessons.map(l => (orderMap.has(l.id) ? { ...l, order: orderMap.get(l.id)! } : l)),
     }))
     const r = await reorderLessons(course.id, newIds)
-    if (r.error) toast.error("Failed to reorder lessons")
+    if (r.error) toast.error(t("failReorderLessons"))
   }
 
   async function handleMoveUnit(unitId: string, dir: "up" | "down") {
@@ -192,7 +194,7 @@ export function CourseEditor({ course: initialCourse, language, grammarPages, te
       units: prev.units.map(u => (orderMap.has(u.id) ? { ...u, order: orderMap.get(u.id)! } : u)),
     }))
     const r = await reorderUnits(course.id, newIds)
-    if (r.error) toast.error("Failed to reorder units")
+    if (r.error) toast.error(t("failReorderUnits"))
   }
 
   return (
@@ -224,7 +226,7 @@ export function CourseEditor({ course: initialCourse, language, grammarPages, te
                 onChange={(e) => setEditTitle(e.target.value)}
                 className="text-xl font-bold h-10 max-w-lg"
                 autoFocus
-                placeholder="Course title"
+                placeholder={t("courseTitlePh")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSaveHeader()
                   if (e.key === "Escape") {
@@ -237,7 +239,7 @@ export function CourseEditor({ course: initialCourse, language, grammarPages, te
               <Textarea
                 value={editDesc}
                 onChange={(e) => setEditDesc(e.target.value)}
-                placeholder="Description (optional)"
+                placeholder={t("descriptionOptionalPh")}
                 rows={2}
                 className="text-sm max-w-lg"
               />
@@ -353,7 +355,7 @@ export function CourseEditor({ course: initialCourse, language, grammarPages, te
             {unitsSorted.length > 0 && (
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Layers className="h-4 w-4" />
-                Lessons not in a unit
+                {t("lessonsNotInUnit")}
               </div>
             )}
             {looseLessons.map((lesson, i) => (

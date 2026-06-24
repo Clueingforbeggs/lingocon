@@ -454,7 +454,16 @@
     "noUnit": "No unit",
     "courseTitlePh": "Course title",
     "add": "Add",
-    "addLessonToUnit": "Add Lesson to Unit"
+    "addLessonToUnit": "Add Lesson to Unit",
+    "coursePublished": "Course published",
+    "movedToDraft": "Moved to draft",
+    "lessonsNotInUnit": "Lessons not in a unit",
+    "itemsCount": "{count} {count, plural, one {item} other {items}}",
+    "save": "Save",
+    "noItemsYet": "No items yet — add content below.",
+    "deleteLesson": "Delete Lesson",
+    "unitLabel": "Unit {index}",
+    "noLessonsYet": "No lessons in this unit yet."
   },
   "studio": {
     "common": {

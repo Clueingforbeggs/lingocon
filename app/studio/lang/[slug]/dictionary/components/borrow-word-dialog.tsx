@@ -24,6 +24,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useTranslations } from "next-intl"
 import { searchLanguages, searchLanguageDictionary } from "@/app/actions/borrow"
 
 interface BorrowWordDialogProps {
@@ -56,6 +57,7 @@ export function BorrowWordDialog({
   languageName,
   onBorrow,
 }: BorrowWordDialogProps) {
+  const t = useTranslations("borrow")
   const [tab, setTab] = useState("lingocon")
 
   // LingoCon tab state
@@ -137,7 +139,7 @@ export function BorrowWordDialog({
       gloss: selectedEntry.gloss,
       ipa: selectedEntry.ipa || undefined,
       partOfSpeech: selectedEntry.partOfSpeech || undefined,
-      etymology: `Borrowed from ${sourceLangName}: [${selectedEntry.lemma}]`,
+      etymology: t("etymologyFromLingocon", { lang: sourceLangName, word: selectedEntry.lemma }),
       tags: ["loanword"],
     })
     onOpenChange(false)
@@ -151,7 +153,7 @@ export function BorrowWordDialog({
       gloss: realGloss,
       ipa: realIpa || undefined,
       partOfSpeech: realPos || undefined,
-      etymology: `Borrowed from ${realLangName}: "${realWord}"`,
+      etymology: t("etymologyFromReal", { lang: realLangName, word: realWord }),
       tags: ["loanword"],
     })
     onOpenChange(false)
@@ -163,11 +165,10 @@ export function BorrowWordDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Languages className="h-5 w-5" />
-            Borrow Word
+            {t("title")}
           </DialogTitle>
           <DialogDescription>
-            Import a word from another language into {languageName}. Adapt its
-            form to fit your phonology.
+            {t("desc", { name: languageName })}
           </DialogDescription>
         </DialogHeader>
 
@@ -175,11 +176,11 @@ export function BorrowWordDialog({
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="lingocon" className="gap-2">
               <Globe className="h-4 w-4" />
-              From LingoCon
+              {t("tabLingocon")}
             </TabsTrigger>
             <TabsTrigger value="real" className="gap-2">
               <Languages className="h-4 w-4" />
-              From Real Language
+              {t("tabReal")}
             </TabsTrigger>
           </TabsList>
 
@@ -188,12 +189,12 @@ export function BorrowWordDialog({
             {!selectedLang ? (
               // Step 1: Search for a language
               <div className="space-y-3">
-                <Label>Find a language on LingoCon</Label>
+                <Label>{t("findLanguage")}</Label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search languages..."
+                      placeholder={t("searchLanguagesPh")}
                       value={langQuery}
                       onChange={(e) => setLangQuery(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSearchLanguages()}
@@ -206,7 +207,7 @@ export function BorrowWordDialog({
                     onClick={handleSearchLanguages}
                     disabled={isSearching}
                   >
-                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : t("search")}
                   </Button>
                 </div>
                 <ScrollArea className="h-[250px] rounded-md border">
@@ -214,8 +215,8 @@ export function BorrowWordDialog({
                     {languages.length === 0 ? (
                       <div className="py-8 text-center text-sm text-muted-foreground">
                         {langQuery
-                          ? "No public languages found. Try a different query."
-                          : "Search for a language to browse its dictionary."}
+                          ? t("noLanguages")
+                          : t("searchLanguagePrompt")}
                       </div>
                     ) : (
                       languages.map((lang) => (
@@ -231,7 +232,7 @@ export function BorrowWordDialog({
                             </span>
                           </div>
                           <Badge variant="secondary" className="text-xs">
-                            {lang._count.dictionaryEntries} words
+                            {t("wordsCount", { count: lang._count.dictionaryEntries })}
                           </Badge>
                         </button>
                       ))
@@ -244,7 +245,7 @@ export function BorrowWordDialog({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label>
-                    Browse{" "}
+                    {t("browse")}{" "}
                     <span className="font-semibold text-primary">{selectedLang.name}</span>
                   </Label>
                   <Button
@@ -256,14 +257,14 @@ export function BorrowWordDialog({
                       setWordQuery("")
                     }}
                   >
-                    ← Change language
+                    {t("changeLanguage")}
                   </Button>
                 </div>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search words or glosses..."
+                      placeholder={t("searchWordsPh")}
                       value={wordQuery}
                       onChange={(e) => setWordQuery(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSearchWords()}
@@ -276,7 +277,7 @@ export function BorrowWordDialog({
                     onClick={handleSearchWords}
                     disabled={isSearching}
                   >
-                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : t("search")}
                   </Button>
                 </div>
                 <ScrollArea className="h-[250px] rounded-md border">
@@ -284,8 +285,8 @@ export function BorrowWordDialog({
                     {entries.length === 0 ? (
                       <div className="py-8 text-center text-sm text-muted-foreground">
                         {wordQuery
-                          ? "No entries found."
-                          : "Search for a word to borrow."}
+                          ? t("noEntries")
+                          : t("searchWordPrompt")}
                       </div>
                     ) : (
                       entries.map((entry: any) => (
@@ -314,7 +315,7 @@ export function BorrowWordDialog({
               // Step 3: Adapt and confirm
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label>Adapt the borrowed word</Label>
+                  <Label>{t("adaptTitle")}</Label>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -323,7 +324,7 @@ export function BorrowWordDialog({
                       setAdaptedForm("")
                     }}
                   >
-                    ← Pick another word
+                    {t("pickAnother")}
                   </Button>
                 </div>
 
@@ -331,13 +332,13 @@ export function BorrowWordDialog({
                 <div className="rounded-lg border bg-muted/50 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs text-muted-foreground">Source ({sourceLangName})</div>
+                      <div className="text-xs text-muted-foreground">{t("source", { name: sourceLangName })}</div>
                       <div className="font-serif text-lg">{selectedEntry.lemma}</div>
                       <div className="text-sm text-muted-foreground">{selectedEntry.gloss}</div>
                     </div>
                     <ArrowRight className="h-5 w-5 shrink-0 rotate-90 text-muted-foreground sm:rotate-0" />
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs text-muted-foreground">Adapted ({languageName})</div>
+                      <div className="text-xs text-muted-foreground">{t("adapted", { name: languageName })}</div>
                       <div className="font-serif text-lg text-primary">
                         {adaptedForm || "..."}
                       </div>
@@ -346,26 +347,26 @@ export function BorrowWordDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="adapted-form">Adapted Form</Label>
+                  <Label htmlFor="adapted-form">{t("adaptedForm")}</Label>
                   <Input
                     id="adapted-form"
                     value={adaptedForm}
                     onChange={(e) => setAdaptedForm(e.target.value)}
-                    placeholder="How the word sounds in your language"
+                    placeholder={t("adaptedFormPh")}
                     autoFocus
                   />
                   <p className="text-xs text-muted-foreground">
-                    Modify the word to fit your language&apos;s phonology. The original form will be recorded in etymology.
+                    {t("adaptHint")}
                   </p>
                 </div>
 
                 <DialogFooter>
                   <Button variant="outline" onClick={() => onOpenChange(false)}>
-                    Cancel
+                    {t("cancel")}
                   </Button>
                   <Button onClick={handleBorrowFromLingocon} disabled={!adaptedForm}>
                     <Check className="h-4 w-4 mr-2" />
-                    Borrow Word
+                    {t("title")}
                   </Button>
                 </DialogFooter>
               </div>
@@ -376,7 +377,7 @@ export function BorrowWordDialog({
           <TabsContent value="real" className="flex-1 min-h-0 space-y-4 mt-4">
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label>Source Language</Label>
+                <Label>{t("sourceLanguage")}</Label>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {REAL_LANGUAGES.filter(l => l !== realLangName).slice(0, 12).map((lang) => (
                     <button
@@ -397,35 +398,35 @@ export function BorrowWordDialog({
                 <Input
                   value={realLangName}
                   onChange={(e) => setRealLangName(e.target.value)}
-                  placeholder="e.g. Latin, Japanese, Proto-Indo-European..."
+                  placeholder={t("sourceLanguagePh")}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Original Word</Label>
+                  <Label>{t("originalWord")}</Label>
                   <Input
                     value={realWord}
                     onChange={(e) => {
                       setRealWord(e.target.value)
                       if (!adaptedForm) setAdaptedForm(e.target.value)
                     }}
-                    placeholder='e.g. "aqua", "木"'
+                    placeholder={t("originalWordPh")}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Gloss / Meaning</Label>
+                  <Label>{t("glossMeaning")}</Label>
                   <Input
                     value={realGloss}
                     onChange={(e) => setRealGloss(e.target.value)}
-                    placeholder="e.g. water, tree"
+                    placeholder={t("glossMeaningPh")}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>IPA (optional)</Label>
+                  <Label>{t("ipaOptional")}</Label>
                   <Input
                     value={realIpa}
                     onChange={(e) => setRealIpa(e.target.value)}
@@ -434,11 +435,11 @@ export function BorrowWordDialog({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Part of Speech</Label>
+                  <Label>{t("partOfSpeech")}</Label>
                   <Input
                     value={realPos}
                     onChange={(e) => setRealPos(e.target.value)}
-                    placeholder="noun, verb..."
+                    placeholder={t("posPh")}
                   />
                 </div>
               </div>
@@ -447,7 +448,7 @@ export function BorrowWordDialog({
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
                 <div className="flex items-center gap-3 text-sm">
                   <span className="text-muted-foreground">
-                    {realLangName || "Source"}: <span className="font-medium text-foreground">{realWord || "..."}</span>
+                    {realLangName || t("sourceFallback")}: <span className="font-medium text-foreground">{realWord || "..."}</span>
                   </span>
                   <ArrowRight className="h-3 w-3 text-muted-foreground" />
                   <span className="text-muted-foreground">
@@ -455,12 +456,12 @@ export function BorrowWordDialog({
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="adapted-real" className="text-xs">Adapted form in your language</Label>
+                  <Label htmlFor="adapted-real" className="text-xs">{t("adaptedInYourLang")}</Label>
                   <Input
                     id="adapted-real"
                     value={adaptedForm}
                     onChange={(e) => setAdaptedForm(e.target.value)}
-                    placeholder="How it sounds in your language"
+                    placeholder={t("adaptedRealPh")}
                   />
                 </div>
               </div>
@@ -468,14 +469,14 @@ export function BorrowWordDialog({
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("cancel")}
               </Button>
               <Button
                 onClick={handleBorrowFromReal}
                 disabled={!realWord || !realGloss || !realLangName}
               >
                 <Check className="h-4 w-4 mr-2" />
-                Borrow Word
+                {t("title")}
               </Button>
             </DialogFooter>
           </TabsContent>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { AudioWaveform, Info } from "lucide-react"
@@ -156,6 +157,7 @@ interface PublicPhonologyViewProps {
 }
 
 export function PublicPhonologyView({ language, symbols }: PublicPhonologyViewProps) {
+    const t = useTranslations("studio.phonology")
     const metadata = languageMetadataSchema.parse(language.metadata ?? {})
 
     const ipaSymbols = useMemo(() => {
@@ -254,10 +256,10 @@ export function PublicPhonologyView({ language, symbols }: PublicPhonologyViewPr
                 <div className="flex gap-3 flex-wrap">
                     <Badge variant="outline" className="text-sm px-3 py-1.5 gap-2">
                         <AudioWaveform className="h-3.5 w-3.5" />
-                        {consonantCount} consonants
+                        {t("consonants", { count: consonantCount })}
                     </Badge>
                     <Badge variant="outline" className="text-sm px-3 py-1.5 gap-2">
-                        {vowelCount} vowels
+                        {t("vowels", { count: vowelCount })}
                     </Badge>
                 </div>
             )}
@@ -265,13 +267,13 @@ export function PublicPhonologyView({ language, symbols }: PublicPhonologyViewPr
             {consonantChart.manners.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg font-serif">Consonant Inventory</CardTitle>
+                        <CardTitle className="text-lg font-serif">{t("consonantInventory")}</CardTitle>
                     </CardHeader>
                     <CardContent className="overflow-x-auto">
                         <table className="w-full text-sm border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="text-left p-2 border-b border-border/60 text-xs text-muted-foreground font-medium">Manner</th>
+                                    <th className="text-left p-2 border-b border-border/60 text-xs text-muted-foreground font-medium">{t("manner")}</th>
                                     {consonantChart.places.map((place) => (
                                         <th key={place} colSpan={2} className="p-2 border-b border-border/60 text-xs text-muted-foreground font-medium text-center">{place}</th>
                                     ))}
@@ -304,13 +306,13 @@ export function PublicPhonologyView({ language, symbols }: PublicPhonologyViewPr
             {vowelChart.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg font-serif">Vowel Inventory</CardTitle>
+                        <CardTitle className="text-lg font-serif">{t("vowelInventory")}</CardTitle>
                     </CardHeader>
                     <CardContent className="overflow-x-auto">
                         <table className="w-full text-sm border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="text-left p-2 border-b border-border/60 text-xs text-muted-foreground font-medium">Height</th>
+                                    <th className="text-left p-2 border-b border-border/60 text-xs text-muted-foreground font-medium">{t("height")}</th>
                                     {VOWEL_BACKNESS.map((b) => (
                                         <th key={b} className="p-2 border-b border-border/60 text-xs text-muted-foreground font-medium text-center">{b}</th>
                                     ))}
@@ -353,7 +355,7 @@ export function PublicPhonologyView({ language, symbols }: PublicPhonologyViewPr
             {metadata.syllableStructure && (
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg font-serif">Syllable Structure</CardTitle>
+                        <CardTitle className="text-lg font-serif">{t("syllableStructure")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <code className="text-lg font-mono bg-muted/50 px-3 py-1.5 rounded-md">{metadata.syllableStructure}</code>
@@ -364,7 +366,7 @@ export function PublicPhonologyView({ language, symbols }: PublicPhonologyViewPr
             {metadata.allophonyRules && (
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg font-serif">Phonological Rules</CardTitle>
+                        <CardTitle className="text-lg font-serif">{t("phonologicalRules")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <pre className="text-sm font-mono whitespace-pre-wrap text-foreground/80">{metadata.allophonyRules}</pre>

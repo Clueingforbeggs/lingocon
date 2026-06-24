@@ -5,6 +5,11 @@ server {
     # Redirect HTTP to HTTPS (uncomment after getting SSL with certbot)
     # return 301 https://$host$request_uri;
 
+    # Allow larger uploads (e.g. CSV dictionary imports). nginx defaults to 1m,
+    # which makes uploads over ~1 MB fail with a 413 HTML error page. Keep this
+    # at or below the app's route maxDuration/body expectations.
+    client_max_body_size 25M;
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -15,6 +20,11 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
+
+        # The CSV import route allows up to 60s (maxDuration = 60). Give the
+        # proxy matching headroom so large imports don't 504 mid-request.
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
     }
 
     location /uploads/ {

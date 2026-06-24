@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
 interface DictionaryPaginationProps {
@@ -25,6 +26,7 @@ export function DictionaryPagination({
   totalPages,
   onPageChange,
 }: DictionaryPaginationProps) {
+  const t = useTranslations("studio.dictionary")
   const [jumpPage, setJumpPage] = useState("")
   const [jumpDialogOpen, setJumpDialogOpen] = useState(false)
 
@@ -54,7 +56,7 @@ export function DictionaryPagination({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
       <div className="text-sm text-muted-foreground">
-        Page {currentPage} of {totalPages}
+        {t("pageOf", { current: currentPage, total: totalPages })}
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-2">
@@ -67,7 +69,7 @@ export function DictionaryPagination({
           className="gap-1"
         >
           <ChevronLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">Previous</span>
+          <span className="hidden sm:inline">{t("paginationPrevious")}</span>
         </Button>
         
         <div className="flex items-center gap-1">
@@ -86,9 +88,9 @@ export function DictionaryPagination({
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Jump to Page</DialogTitle>
+                        <DialogTitle>{t("jumpToPage")}</DialogTitle>
                         <DialogDescription>
-                          Enter a page number between 1 and {totalPages}
+                          {t("jumpToPageDesc", { total: totalPages })}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="flex items-center gap-2 py-4">
@@ -103,10 +105,10 @@ export function DictionaryPagination({
                               handleJumpToPage()
                             }
                           }}
-                          placeholder="Page number"
+                          placeholder={t("pageNumberPh")}
                           className="flex-1"
                         />
-                        <Button type="button" onClick={handleJumpToPage}>Go</Button>
+                        <Button type="button" onClick={handleJumpToPage}>{t("go")}</Button>
                       </div>
                     </DialogContent>
                   </Dialog>
@@ -136,7 +138,7 @@ export function DictionaryPagination({
           disabled={currentPage >= totalPages}
           className="gap-1"
         >
-          <span className="hidden sm:inline">Next</span>
+          <span className="hidden sm:inline">{t("paginationNext")}</span>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

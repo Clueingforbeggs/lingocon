@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useTranslations } from "next-intl"
 
 import {
   Table,
@@ -54,6 +55,7 @@ export function DictionaryTable({
   ttsSettings,
   allEntries = [],
 }: DictionaryTableProps) {
+  const t = useTranslations("studio.dictionary")
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -77,7 +79,7 @@ export function DictionaryTable({
     return (
       <div className="rounded-lg border border-dashed p-12 text-center">
         <p className="text-muted-foreground">
-          No entries match your search.
+          {t("noMatchesSearch")}
         </p>
       </div>
     )
@@ -95,40 +97,40 @@ export function DictionaryTable({
                   onCheckedChange={handleSelectAll}
                 />
                 <ContextualHelp
-                  content="Select all entries for bulk operations like editing or exporting."
+                  content={t("helpSelectAll")}
                   variant="icon"
                 />
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                Lemma
+                {t("colHeadLemma")}
                 <ContextualHelp
-                  content="The dictionary form or headword of the entry."
+                  content={t("helpLemma")}
                   variant="icon"
                 />
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                Gloss
+                {t("colHeadGloss")}
                 <ContextualHelp
-                  content="The translation or definition of the word."
+                  content={t("helpGloss")}
                   variant="icon"
                 />
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                IPA
+                {t("colHeadIpa")}
                 <ContextualHelp
-                  content="International Phonetic Alphabet pronunciation. Click the speaker icon to hear it."
+                  content={t("helpIpa")}
                   variant="icon"
                 />
               </div>
             </TableHead>
-            <TableHead>Part of Speech</TableHead>
-            <TableHead className="w-24 text-right">Actions</TableHead>
+            <TableHead>{t("colHeadPos")}</TableHead>
+            <TableHead className="w-24 text-right">{t("colHeadActions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -176,7 +178,7 @@ export function DictionaryTable({
                     <div className="flex items-center gap-1 mt-1">
                       <Link2 className="h-2.5 w-2.5 text-primary" />
                       <span className="text-[10px] text-primary/80">
-                        from <span className="font-serif font-medium">{entry.sourceEntry.lemma}</span>
+                        {t("fromLabel")} <span className="font-serif font-medium">{entry.sourceEntry.lemma}</span>
                         {entry.sourceEntry.language && (
                           <span className="text-muted-foreground"> ({entry.sourceEntry.language.name})</span>
                         )}
@@ -250,7 +252,7 @@ export function DictionaryTable({
                       onClick={() => onDerive(entry)}
                       disabled={isPending}
                       className="h-8 w-8 text-muted-foreground hover:text-primary"
-                      title="Derive Word"
+                      title={t("deriveWord")}
                     >
                       <GitFork className="h-4 w-4" />
                     </Button>

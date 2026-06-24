@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { useDebounce } from "@/lib/hooks/use-debounce"
 import { useEffect, useState } from "react"
 import {
@@ -23,6 +24,7 @@ export function DictionarySearch({
   defaultValue = "",
   defaultField = "all"
 }: DictionarySearchProps) {
+  const t = useTranslations("studio.dictionary")
   const [value, setValue] = useState(defaultValue)
   const [field, setField] = useState(defaultField)
   const debouncedValue = useDebounce(value, 300)
@@ -46,7 +48,7 @@ export function DictionarySearch({
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder={field === "gloss" ? "Search meanings..." : field === "tags" ? "Search by tag..." : "Search dictionary..."}
+          placeholder={field === "gloss" ? t("searchMeaningsPh") : field === "tags" ? t("searchByTagPh") : t("searchDictPh")}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           className="pl-9"
@@ -54,14 +56,14 @@ export function DictionarySearch({
       </div>
       <Select value={field} onValueChange={handleFieldChange}>
         <SelectTrigger className="w-full sm:w-[130px]">
-          <SelectValue placeholder="Field" />
+          <SelectValue placeholder={t("fieldLabel")} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Fields</SelectItem>
-          <SelectItem value="lemma">Word</SelectItem>
-          <SelectItem value="gloss">Meaning</SelectItem>
-          <SelectItem value="partOfSpeech">POS</SelectItem>
-          <SelectItem value="tags">Tags</SelectItem>
+          <SelectItem value="all">{t("fieldAll")}</SelectItem>
+          <SelectItem value="lemma">{t("fieldWord")}</SelectItem>
+          <SelectItem value="gloss">{t("fieldMeaning")}</SelectItem>
+          <SelectItem value="partOfSpeech">{t("fieldPos")}</SelectItem>
+          <SelectItem value="tags">{t("fieldTags")}</SelectItem>
         </SelectContent>
       </Select>
     </div>

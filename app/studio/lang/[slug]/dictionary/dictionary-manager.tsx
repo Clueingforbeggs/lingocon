@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { readJson, NonJsonResponseError } from "@/lib/utils/http-response"
 import {
   createDictionaryEntry,
   updateDictionaryEntry,
@@ -368,7 +369,15 @@ export function DictionaryManager({
         body: formData,
       })
 
-      const result = await response.json()
+      // readJson throws NonJsonResponseError when a reverse proxy (e.g. nginx)
+      // returns an HTML error page instead of the app's JSON — most commonly a
+      // 413 when the upload exceeds the proxy's body-size limit.
+      const result = await readJson<{
+        error?: string
+        imported: number
+        skipped: number
+        errors: number
+      }>(response)
 
       if (!response.ok) {
         throw new Error(result.error || t("importFailed"))
@@ -386,9 +395,18 @@ export function DictionaryManager({
       setIsImportOpen(false)
       router.refresh()
     } catch (error) {
-      toast.error(t("importFailed"), {
-        description: error instanceof Error ? error.message : t("unknownError"),
-      })
+      let description: string
+      if (error instanceof NonJsonResponseError) {
+        description =
+          error.status === 413
+            ? t("importTooLarge")
+            : error.status === 504
+              ? t("importTimeout")
+              : t("importServerError", { status: error.status })
+      } else {
+        description = error instanceof Error ? error.message : t("unknownError")
+      }
+      toast.error(t("importFailed"), { description })
     }
   }
 

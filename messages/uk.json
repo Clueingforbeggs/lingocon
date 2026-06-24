@@ -317,6 +317,18 @@
     "passwordsNoMatch": "Паролі не збігаються.",
     "passwordTooShort": "Пароль має містити щонайменше 8 символів."
   },
+  "langPublic": {
+    "statWords": "Слова",
+    "statGrammar": "Граматика",
+    "statSymbols": "Знаки",
+    "statArticles": "Статті",
+    "statTexts": "Тексти",
+    "statFavorites": "в обраному",
+    "forkEvolve": "Відгалузити та розвинути",
+    "visibilityPublic": "Публічна",
+    "visibilityUnlisted": "За посиланням",
+    "visibilityPrivate": "Приватна"
+  },
   "studio": {
     "common": {
       "cancel": "Скасувати",

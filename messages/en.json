@@ -317,6 +317,18 @@
     "passwordsNoMatch": "Passwords do not match.",
     "passwordTooShort": "Password must be at least 8 characters."
   },
+  "langPublic": {
+    "statWords": "Words",
+    "statGrammar": "Grammar",
+    "statSymbols": "Symbols",
+    "statArticles": "Articles",
+    "statTexts": "Texts",
+    "statFavorites": "Favorites",
+    "forkEvolve": "Fork & Evolve",
+    "visibilityPublic": "Public",
+    "visibilityUnlisted": "Unlisted",
+    "visibilityPrivate": "Private"
+  },
   "studio": {
     "common": {
       "cancel": "Cancel",

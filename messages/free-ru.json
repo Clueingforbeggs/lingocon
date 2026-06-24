@@ -317,6 +317,18 @@
     "passwordsNoMatch": "Пароли не совпадают.",
     "passwordTooShort": "Пароль должен быть не короче 8 символов."
   },
+  "langPublic": {
+    "statWords": "Слова",
+    "statGrammar": "Грамматика",
+    "statSymbols": "Знаки",
+    "statArticles": "Статьи",
+    "statTexts": "Тексты",
+    "statFavorites": "в избранном",
+    "forkEvolve": "Ответвить и развить",
+    "visibilityPublic": "Публичный",
+    "visibilityUnlisted": "По ссылке",
+    "visibilityPrivate": "Приватный"
+  },
   "studio": {
     "common": {
       "cancel": "Отмена",

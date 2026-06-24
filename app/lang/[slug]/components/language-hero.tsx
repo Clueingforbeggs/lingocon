@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Language } from "@prisma/client"
 import Image from "next/image"
 import Link from "next/link"
@@ -51,6 +52,7 @@ interface LanguageHeroProps {
 }
 
 export function LanguageHero({ language, isFavorite, userId }: LanguageHeroProps) {
+    const t = useTranslations("langPublic")
     const [shareUrl, setShareUrl] = useState("")
 
     useEffect(() => {
@@ -60,12 +62,17 @@ export function LanguageHero({ language, isFavorite, userId }: LanguageHeroProps
 
     const c = language._count
     const stats = [
-        { label: "Words", value: c.dictionaryEntries ?? 0, icon: FileText },
-        { label: "Grammar", value: c.grammarPages ?? 0, icon: BookOpen },
-        { label: "Symbols", value: c.scriptSymbols ?? 0, icon: Languages },
-        { label: "Articles", value: c.articles ?? 0, icon: Newspaper },
-        { label: "Texts", value: c.texts ?? 0, icon: BookMarked },
+        { label: t("statWords"), value: c.dictionaryEntries ?? 0, icon: FileText },
+        { label: t("statGrammar"), value: c.grammarPages ?? 0, icon: BookOpen },
+        { label: t("statSymbols"), value: c.scriptSymbols ?? 0, icon: Languages },
+        { label: t("statArticles"), value: c.articles ?? 0, icon: Newspaper },
+        { label: t("statTexts"), value: c.texts ?? 0, icon: BookMarked },
     ].filter((s) => s.value > 0)
+
+    const visibilityLabel =
+        ({ PUBLIC: t("visibilityPublic"), UNLISTED: t("visibilityUnlisted"), PRIVATE: t("visibilityPrivate") } as Record<string, string>)[
+            language.visibility
+        ] ?? language.visibility
 
     return (
         <div className="aurora-glass relative w-full overflow-hidden rounded-3xl">
@@ -108,7 +115,7 @@ export function LanguageHero({ language, isFavorite, userId }: LanguageHeroProps
                                 variant="outline"
                                 className="border-primary/20 bg-primary/5 text-primary backdrop-blur-md"
                             >
-                                {language.visibility}
+                                {visibilityLabel}
                             </Badge>
                             <div className="flex items-center gap-1">
                                 {language.discordUrl && (
@@ -160,7 +167,7 @@ export function LanguageHero({ language, isFavorite, userId }: LanguageHeroProps
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm text-primary">
                             <Heart className="h-3.5 w-3.5" />
                             <span className="font-semibold tabular-nums">{c.favorites}</span>
-                            <span className="text-primary/70">Favorites</span>
+                            <span className="text-primary/70">{t("statFavorites")}</span>
                         </span>
                         {stats.map((s) => {
                             const Icon = s.icon
@@ -193,7 +200,7 @@ export function LanguageHero({ language, isFavorite, userId }: LanguageHeroProps
                                     className="flex h-10 cursor-pointer items-center gap-2 rounded-full px-6 hover:bg-secondary/80"
                                 >
                                     <GitBranch className="h-4 w-4" />
-                                    Fork &amp; Evolve
+                                    {t("forkEvolve")}
                                 </Badge>
                             </Link>
                         )}

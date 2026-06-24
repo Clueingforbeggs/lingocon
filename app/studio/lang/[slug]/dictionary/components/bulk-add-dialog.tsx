@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { suggestIpaFromLemma } from "@/lib/utils/ipa-from-lemma"
 import type { ScriptSymbol } from "@prisma/client"
@@ -52,6 +53,8 @@ export function BulkAddDialog({
   isPending,
   symbols = [],
 }: BulkAddDialogProps) {
+  const t = useTranslations("studio.dictionary")
+  const tc = useTranslations("studio.common")
   const [rows, setRows] = useState<BulkAddRow[]>(() =>
     Array.from({ length: 5 }, createEmptyRow)
   )
@@ -86,7 +89,7 @@ export function BulkAddDialog({
 
   const fillIpaForEmptyRows = useCallback(() => {
     if (!canSuggestIpa) {
-      toast.error("Add IPA values to your alphabet symbols first")
+      toast.error(t("toastNeedIpa"))
       return
     }
     setRows(prev =>
@@ -95,8 +98,8 @@ export function BulkAddDialog({
         return { ...row, ipa: suggestIpaFromLemma(row.lemma, symbols) }
       })
     )
-    toast.success("IPA filled from alphabet mappings")
-  }, [canSuggestIpa, symbols])
+    toast.success(t("toastIpaFilled"))
+  }, [canSuggestIpa, symbols, t])
 
   const addRows = useCallback((count: number = 5) => {
     setRows(prev => [...prev, ...Array.from({ length: count }, createEmptyRow)])
@@ -139,7 +142,7 @@ export function BulkAddDialog({
     const filledRows = rows.filter(row => row.lemma.trim())
 
     if (filledRows.length === 0) {
-      toast.error("Add at least one entry with a lemma")
+      toast.error(t("toastNeedOneEntry"))
       return
     }
 
@@ -154,7 +157,7 @@ export function BulkAddDialog({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      toast.error("Each entry needs both a lemma and a gloss")
+      toast.error(t("toastNeedLemmaGloss"))
       return
     }
 
@@ -184,13 +187,14 @@ export function BulkAddDialog({
     setSubmitting(false)
 
     if (successCount > 0) {
-      toast.success(`Added ${successCount} ${successCount === 1 ? "entry" : "entries"}${failCount > 0 ? `, ${failCount} failed` : ""}`)
+      toast.success(t("toastAdded", { count: successCount }))
+      if (failCount > 0) toast.error(t("toastSomeFailed", { count: failCount }))
       // Reset the form
       setRows(Array.from({ length: 5 }, createEmptyRow))
       setErrors({})
       onOpenChange(false)
     } else {
-      toast.error("Failed to add entries")
+      toast.error(t("toastFailedAll"))
     }
   }
 
@@ -202,12 +206,10 @@ export function BulkAddDialog({
     }}>
       <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Bulk Add Entries</DialogTitle>
+          <DialogTitle>{t("bulkAddEntries")}</DialogTitle>
           <DialogDescription>
-            Add multiple dictionary entries at once. Tab from the last field to add a new row.
-            {canSuggestIpa && (
-              <> IPA is auto-filled from your alphabet when the IPA field is left empty.</>
-            )}
+            {t("bulkAddDesc")}
+            {canSuggestIpa && <>{" "}{t("bulkAddDescIpa")}</>}
           </DialogDescription>
         </DialogHeader>
 
@@ -219,11 +221,11 @@ export function BulkAddDialog({
             <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
               <tr className="border-b">
                 <th className="text-left font-medium px-2 py-2 w-8 text-muted-foreground">#</th>
-                <th className="text-left font-medium px-2 py-2 min-w-[140px]">Lemma *</th>
-                <th className="text-left font-medium px-2 py-2 min-w-[160px]">Gloss *</th>
-                <th className="text-left font-medium px-2 py-2 min-w-[100px]">IPA</th>
-                <th className="text-left font-medium px-2 py-2 min-w-[100px]">POS</th>
-                <th className="text-left font-medium px-2 py-2 min-w-[140px]">Notes</th>
+                <th className="text-left font-medium px-2 py-2 min-w-[140px]">{t("colLemma")}</th>
+                <th className="text-left font-medium px-2 py-2 min-w-[160px]">{t("colGloss")}</th>
+                <th className="text-left font-medium px-2 py-2 min-w-[100px]">{t("colIpa")}</th>
+                <th className="text-left font-medium px-2 py-2 min-w-[100px]">{t("colPos")}</th>
+                <th className="text-left font-medium px-2 py-2 min-w-[140px]">{t("colNotes")}</th>
                 <th className="w-10"></th>
               </tr>
             </thead>
@@ -238,7 +240,7 @@ export function BulkAddDialog({
                       value={row.lemma}
                       onChange={e => updateRow(row.id, "lemma", e.target.value)}
                       onKeyDown={e => handleKeyDown(e, index, "lemma")}
-                      placeholder="word"
+                      placeholder={t("phLemma")}
                       className={cn(
                         "h-8 text-sm font-custom-script border-0 shadow-none focus-visible:ring-1 rounded-sm bg-transparent",
                         errors[row.id]?.has("lemma") && "ring-1 ring-destructive"
@@ -251,7 +253,7 @@ export function BulkAddDialog({
                       value={row.gloss}
                       onChange={e => updateRow(row.id, "gloss", e.target.value)}
                       onKeyDown={e => handleKeyDown(e, index, "gloss")}
-                      placeholder="translation"
+                      placeholder={t("phGloss")}
                       className={cn(
                         "h-8 text-sm border-0 shadow-none focus-visible:ring-1 rounded-sm bg-transparent",
                         errors[row.id]?.has("gloss") && "ring-1 ring-destructive"
@@ -264,7 +266,7 @@ export function BulkAddDialog({
                       value={row.ipa}
                       onChange={e => updateRow(row.id, "ipa", e.target.value)}
                       onKeyDown={e => handleKeyDown(e, index, "ipa")}
-                      placeholder="/.../"
+                      placeholder={t("phIpa")}
                       className="h-8 text-sm border-0 shadow-none focus-visible:ring-1 rounded-sm bg-transparent"
                       disabled={submitting}
                     />
@@ -274,7 +276,7 @@ export function BulkAddDialog({
                       value={row.partOfSpeech}
                       onChange={e => updateRow(row.id, "partOfSpeech", e.target.value)}
                       onKeyDown={e => handleKeyDown(e, index, "partOfSpeech")}
-                      placeholder="noun, verb..."
+                      placeholder={t("phPos")}
                       className="h-8 text-sm border-0 shadow-none focus-visible:ring-1 rounded-sm bg-transparent"
                       disabled={submitting}
                     />
@@ -284,7 +286,7 @@ export function BulkAddDialog({
                       value={row.notes}
                       onChange={e => updateRow(row.id, "notes", e.target.value)}
                       onKeyDown={e => handleKeyDown(e, index, "notes")}
-                      placeholder="notes..."
+                      placeholder={t("phNotes")}
                       className="h-8 text-sm border-0 shadow-none focus-visible:ring-1 rounded-sm bg-transparent"
                       disabled={submitting}
                     />
@@ -318,7 +320,7 @@ export function BulkAddDialog({
             className="gap-1"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add 5 Rows
+            {t("add5Rows")}
           </Button>
           <Button
             type="button"
@@ -329,7 +331,7 @@ export function BulkAddDialog({
             className="gap-1"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add 10 Rows
+            {t("add10Rows")}
           </Button>
           {canSuggestIpa && (
             <Button
@@ -339,11 +341,11 @@ export function BulkAddDialog({
               onClick={fillIpaForEmptyRows}
               disabled={submitting}
             >
-              Fill IPA from alphabet
+              {t("fillIpa")}
             </Button>
           )}
           <span className="text-xs text-muted-foreground ml-auto">
-            {filledCount} {filledCount === 1 ? "entry" : "entries"} ready
+            {t("rowsReady", { count: filledCount })}
           </span>
         </div>
 
@@ -354,7 +356,7 @@ export function BulkAddDialog({
             onClick={() => onOpenChange(false)}
             disabled={submitting}
           >
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button
             type="button"
@@ -365,10 +367,10 @@ export function BulkAddDialog({
             {submitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Adding...
+                {t("adding")}
               </>
             ) : (
-              `Add ${filledCount} ${filledCount === 1 ? "Entry" : "Entries"}`
+              t("addNEntries", { count: filledCount })
             )}
           </Button>
         </DialogFooter>

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, ArrowRight, Search, Check, Plus } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import type { DictionaryEntry } from "@prisma/client"
 
@@ -43,6 +44,7 @@ export function DerivationWizard({
     onSubmit,
     isPending,
 }: DerivationWizardProps) {
+    const t = useTranslations("derive")
     const [type, setType] = useState<DerivationType>("SUFFIX")
     const [affix, setAffix] = useState("")
     const [newGloss, setNewGloss] = useState("")
@@ -78,7 +80,7 @@ export function DerivationWizard({
     useEffect(() => {
         if (open && sourceEntry) {
             setAffix("")
-            setNewGloss(`Derived from ${sourceEntry.lemma}`)
+            setNewGloss(t("glossDerivedFrom", { lemma: sourceEntry.lemma }))
             setNewPartOfSpeech(sourceEntry.partOfSpeech || "")
             setSecondWordId(null)
             setSearchQuery("")
@@ -88,9 +90,9 @@ export function DerivationWizard({
     // Update gloss when compound second word changes
     useEffect(() => {
         if (type === "COMPOUND" && sourceEntry && secondEntry) {
-            setNewGloss(`Compound of ${sourceEntry.lemma} + ${secondEntry.lemma}`)
+            setNewGloss(t("glossCompoundOf", { a: sourceEntry.lemma, b: secondEntry.lemma }))
         } else if (sourceEntry) {
-            setNewGloss(`Derived from ${sourceEntry.lemma}`)
+            setNewGloss(t("glossDerivedFrom", { lemma: sourceEntry.lemma }))
         }
     }, [type, sourceEntry, secondEntry])
 
@@ -125,9 +127,13 @@ export function DerivationWizard({
         // Build etymology text
         let etymologyText: string
         if (type === "COMPOUND" && secondEntry) {
-            etymologyText = `Compound of [${sourceEntry.lemma}] + [${secondEntry.lemma}]`
+            etymologyText = t("etymCompound", { a: sourceEntry.lemma, b: secondEntry.lemma })
         } else {
-            etymologyText = `Derived from [${sourceEntry.lemma}] using ${type.toLowerCase()} '${affix}'`
+            etymologyText = t("etymDerived", {
+                lemma: sourceEntry.lemma,
+                method: type === "SUFFIX" ? t("methodSuffix") : t("methodPrefix"),
+                affix,
+            })
         }
 
         await onSubmit({
@@ -151,9 +157,9 @@ export function DerivationWizard({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>Derive Word</DialogTitle>
+                    <DialogTitle>{t("title")}</DialogTitle>
                     <DialogDescription>
-                        Create a new word derived from <span className="font-semibold text-foreground">&quot;{sourceEntry?.lemma}&quot;</span>.
+                        {t("desc", { lemma: sourceEntry?.lemma ?? "" })}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -161,7 +167,7 @@ export function DerivationWizard({
                     <div className="grid gap-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Derivation Type</Label>
+                                <Label>{t("derivationType")}</Label>
                                 <Select
                                     value={type}
                                     onValueChange={(v) => {
@@ -176,16 +182,16 @@ export function DerivationWizard({
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="SUFFIX">Suffix (-end)</SelectItem>
-                                        <SelectItem value="PREFIX">Prefix (start-)</SelectItem>
-                                        <SelectItem value="COMPOUND">Compound (word+word)</SelectItem>
+                                        <SelectItem value="SUFFIX">{t("typeSuffix")}</SelectItem>
+                                        <SelectItem value="PREFIX">{t("typePrefix")}</SelectItem>
+                                        <SelectItem value="COMPOUND">{t("typeCompound")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             {type === "COMPOUND" ? (
                                 <div className="space-y-2">
-                                    <Label>Second Word</Label>
+                                    <Label>{t("secondWord")}</Label>
                                     {secondEntry ? (
                                         <div className="flex items-center gap-2">
                                             <div className="flex-1 px-3 py-2 rounded-md border bg-muted/50 font-serif">
@@ -206,7 +212,7 @@ export function DerivationWizard({
                                             <div className="relative">
                                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                                 <Input
-                                                    placeholder="Search words..."
+                                                    placeholder={t("searchWordsPh")}
                                                     value={searchQuery}
                                                     onChange={(e) => setSearchQuery(e.target.value)}
                                                     className="pl-9"
@@ -216,7 +222,7 @@ export function DerivationWizard({
                                                 <div className="p-1">
                                                     {filteredEntries.length === 0 ? (
                                                         <div className="py-4 text-center text-sm text-muted-foreground">
-                                                            No words found
+                                                            {t("noWordsFound")}
                                                         </div>
                                                     ) : (
                                                         filteredEntries.slice(0, 50).map((entry) => (
@@ -245,9 +251,9 @@ export function DerivationWizard({
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    <Label>Affix / Component</Label>
+                                    <Label>{t("affixComponent")}</Label>
                                     <Input
-                                        placeholder={type === "SUFFIX" ? "-er, -tion" : "un-, re-"}
+                                        placeholder={type === "SUFFIX" ? t("affixSuffixPh") : t("affixPrefixPh")}
                                         value={affix}
                                         onChange={(e) => setAffix(e.target.value)}
                                         autoFocus
@@ -259,14 +265,14 @@ export function DerivationWizard({
                         {/* Preview Section */}
                         <div className="rounded-lg border bg-muted/50 p-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                             <div className="text-center flex-1">
-                                <div className="text-sm text-muted-foreground">Source</div>
+                                <div className="text-sm text-muted-foreground">{t("source")}</div>
                                 <div className="font-serif text-lg">{sourceEntry?.lemma}</div>
                             </div>
                             {type === "COMPOUND" && (
                                 <>
                                     <Plus className="h-4 w-4 text-muted-foreground" />
                                     <div className="text-center flex-1">
-                                        <div className="text-sm text-muted-foreground">Second</div>
+                                        <div className="text-sm text-muted-foreground">{t("second")}</div>
                                         <div className="font-serif text-lg">
                                             {secondEntry?.lemma || "..."}
                                         </div>
@@ -275,7 +281,7 @@ export function DerivationWizard({
                             )}
                             <ArrowRight className="h-4 w-4 text-muted-foreground" />
                             <div className="text-center flex-1">
-                                <div className="text-sm text-muted-foreground">Result</div>
+                                <div className="text-sm text-muted-foreground">{t("result")}</div>
                                 <div className="font-serif text-xl font-medium text-primary">
                                     {resultLemma || "..."}
                                 </div>
@@ -283,20 +289,20 @@ export function DerivationWizard({
                         </div>
 
                         <div className="space-y-2">
-                            <Label>New Meaning (Gloss)</Label>
+                            <Label>{t("newMeaning")}</Label>
                             <Input
                                 value={newGloss}
                                 onChange={(e) => setNewGloss(e.target.value)}
-                                placeholder="Definition of the new word"
+                                placeholder={t("newMeaningPh")}
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Part of Speech</Label>
+                            <Label>{t("partOfSpeech")}</Label>
                             <Input
                                 value={newPartOfSpeech}
                                 onChange={(e) => setNewPartOfSpeech(e.target.value)}
-                                placeholder="e.g. noun, verb (derived)"
+                                placeholder={t("posPh")}
                             />
                         </div>
                     </div>
@@ -307,11 +313,11 @@ export function DerivationWizard({
                             variant="outline"
                             onClick={() => onOpenChange(false)}
                         >
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button type="submit" disabled={!canSubmit || isPending}>
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Create Derived Word
+                            {t("createDerived")}
                         </Button>
                     </DialogFooter>
                 </form>

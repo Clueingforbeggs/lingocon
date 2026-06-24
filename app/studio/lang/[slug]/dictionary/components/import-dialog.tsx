@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table"
 import { useState } from "react"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import { parseCSV, validateCSVData } from "@/lib/utils/csv-parser"
 
 interface ImportDialogProps {
@@ -36,6 +37,8 @@ export function ImportDialog({
   onImport,
   isPending,
 }: ImportDialogProps) {
+  const t = useTranslations("studio.dictionary")
+  const tc = useTranslations("studio.common")
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<Array<Record<string, string>> | null>(null)
 
@@ -51,7 +54,7 @@ export function ImportDialog({
       const validation = validateCSVData(rows)
 
       if (!validation.valid) {
-        toast.error("CSV validation failed", {
+        toast.error(t("csvValidationFailed"), {
           description: validation.errors.join(", "),
         })
         setPreview(null)
@@ -60,10 +63,10 @@ export function ImportDialog({
 
       setPreview(rows.slice(0, 10))
       if (rows.length > 10) {
-        toast.info(`Preview showing first 10 of ${rows.length} rows`)
+        toast.info(t("csvPreviewInfo", { total: rows.length }))
       }
     } catch (error) {
-      toast.error("Failed to parse CSV file", {
+      toast.error(t("csvParseFailed"), {
         description: error instanceof Error ? error.message : "Unknown error",
       })
       setPreview(null)
@@ -82,15 +85,15 @@ export function ImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Import Dictionary from CSV</DialogTitle>
+          <DialogTitle>{t("importTitle")}</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with columns: Lemma, Gloss, IPA, Part of Speech, Etymology, Notes, Tags, Related Words (all optional except Lemma and Gloss). Tags and Related Words use semicolons to separate values.
+            {t("importDesc")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="csv-file">CSV File</Label>
+            <Label htmlFor="csv-file">{t("csvFileLabel")}</Label>
             <Input
               id="csv-file"
               type="file"
@@ -99,24 +102,24 @@ export function ImportDialog({
               disabled={isPending}
             />
             <p className="text-xs text-muted-foreground">
-              CSV should have headers: Lemma, Gloss, IPA, Part of Speech, Etymology, Notes, Tags, Related Words
+              {t("csvHeadersHint")}
             </p>
           </div>
 
           {preview && (
             <div className="space-y-2">
-              <Label>Preview (first {Math.min(10, preview.length)} rows)</Label>
+              <Label>{t("previewRows", { count: Math.min(10, preview.length) })}</Label>
               <div className="rounded-md border max-h-64 overflow-auto scroll-fade-x">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Lemma</TableHead>
-                      <TableHead>Gloss</TableHead>
-                      <TableHead>IPA</TableHead>
-                      <TableHead>POS</TableHead>
-                      <TableHead>Etymology</TableHead>
-                      <TableHead>Tags</TableHead>
-                      <TableHead>Related</TableHead>
+                      <TableHead>{t("colHeadLemma")}</TableHead>
+                      <TableHead>{t("colHeadGloss")}</TableHead>
+                      <TableHead>{t("colHeadIpa")}</TableHead>
+                      <TableHead>{t("fieldPos")}</TableHead>
+                      <TableHead>{t("impColEtymology")}</TableHead>
+                      <TableHead>{t("fieldTags")}</TableHead>
+                      <TableHead>{t("impColRelated")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -159,13 +162,13 @@ export function ImportDialog({
             }}
             disabled={isPending}
           >
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button
             onClick={handleImport}
             disabled={!file || isPending || !preview}
           >
-            {isPending ? "Importing..." : "Import Entries"}
+            {isPending ? t("importingBtn") : t("importEntriesBtn")}
           </Button>
         </DialogFooter>
       </DialogContent>

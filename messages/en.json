@@ -833,7 +833,19 @@
       "helpIpa": "International Phonetic Alphabet pronunciation. Click the speaker icon to hear it.",
       "deriveWord": "Derive Word",
       "helpSelectAll": "Select all entries for bulk operations like editing or exporting.",
-      "fromLabel": "from"
+      "fromLabel": "from",
+      "csvValidationFailed": "CSV validation failed",
+      "csvPreviewInfo": "Preview showing first 10 of {total} rows",
+      "csvParseFailed": "Failed to parse CSV file",
+      "importTitle": "Import Dictionary from CSV",
+      "importDesc": "Upload a CSV file with columns: Lemma, Gloss, IPA, Part of Speech, Etymology, Notes, Tags, Related Words (all optional except Lemma and Gloss). Tags and Related Words use semicolons to separate values.",
+      "csvFileLabel": "CSV File",
+      "csvHeadersHint": "CSV should have headers: Lemma, Gloss, IPA, Part of Speech, Etymology, Notes, Tags, Related Words",
+      "previewRows": "Preview (first {count} rows)",
+      "impColEtymology": "Etymology",
+      "impColRelated": "Related",
+      "importingBtn": "Importing...",
+      "importEntriesBtn": "Import Entries"
     },
     "paradigms": {
       "pageTitle": "Paradigm Tables",

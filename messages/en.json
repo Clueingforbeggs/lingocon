@@ -1466,6 +1466,8 @@
       "totalXp": "Total XP",
       "dueToday": "Due Today",
       "continueLearning": "Continue learning",
+      "dailyGoal": "Daily goal",
+      "dailyGoalReached": "Goal reached!",
       "discoverMore": "Discover more courses",
       "exploreCourses": "Courses to explore",
       "viewAll": "View all",

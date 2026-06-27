@@ -28,6 +28,9 @@ export const LESSON_XP = {
   replay:     5, // reduced XP for replaying an already-completed lesson (once per day)
 } as const
 
+/** Default daily XP goal shown as a progress ring on the learn dashboard. */
+export const DAILY_XP_GOAL = 30
+
 /** Authoritative lesson XP for a *first* completion given remaining hearts. */
 export function computeLessonXp(heartsLeft: number): number {
   const hearts = Math.max(0, Math.min(LESSON_XP.maxHearts, Math.floor(heartsLeft)))

@@ -6,8 +6,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BookOpen, Flame, Sparkles, Trophy, GraduationCap, ArrowRight, Globe, Compass } from "lucide-react"
-import { xpToNextLevel } from "@/lib/fsrs"
+import { BookOpen, Flame, Sparkles, Trophy, GraduationCap, ArrowRight, Globe, Compass, Target, CheckCircle2 } from "lucide-react"
+import { xpToNextLevel, DAILY_XP_GOAL } from "@/lib/fsrs"
 import { getLearnableLanguages } from "@/lib/learn-catalog"
 import { LearnLanguageCard } from "./components/learn-language-card"
 import { cn } from "@/lib/utils"
@@ -50,6 +50,17 @@ async function getLearnDashboardData(userId: string) {
   }))
 }
 
+/** Total XP the user has earned today (UTC), for the daily-goal ring. */
+async function getTodayXp(userId: string): Promise<number> {
+  const startOfToday = new Date()
+  startOfToday.setUTCHours(0, 0, 0, 0)
+  const result = await prisma.xPEvent.aggregate({
+    where: { userId, createdAt: { gte: startOfToday } },
+    _sum: { amount: true },
+  })
+  return result._sum.amount ?? 0
+}
+
 export default async function LearnDashboardPage() {
   const session = await auth()
   const isDevMode = process.env.DEV_MODE === "true"
@@ -58,6 +69,7 @@ export default async function LearnDashboardPage() {
   const tl = await getTranslations("leaderboard")
 
   const enrollments = userId ? await getLearnDashboardData(userId) : []
+  const todayXp = userId ? await getTodayXp(userId) : 0
   const enrolledIds = enrollments.map((e) => e.language.id)
 
   // Discovery: learnable languages the user isn't already enrolled in.
@@ -107,7 +119,8 @@ export default async function LearnDashboardPage() {
         </div>
 
         {enrollments.length > 0 && (
-          <div className="relative mt-6 flex flex-wrap gap-4">
+          <div className="relative mt-6 flex flex-wrap items-center gap-4">
+            <DailyGoalPill earned={todayXp} goal={DAILY_XP_GOAL} label={t("dailyGoal")} doneLabel={t("dailyGoalReached")} />
             <StatPill icon={<Flame className="h-4 w-4 text-amber-500" />} label={t("bestStreak")} value={t("streakDays", { count: totalStreak })} />
             <StatPill icon={<Trophy className="h-4 w-4 text-amber-400" />} label={t("totalXp")} value={totalXP.toLocaleString()} />
             <StatPill icon={<BookOpen className="h-4 w-4 text-primary" />} label={t("dueToday")} value={totalDue.toString()} />
@@ -170,6 +183,28 @@ function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string
       {icon}
       <span className="text-muted-foreground">{label}:</span>
       <span className="font-semibold">{value}</span>
+    </div>
+  )
+}
+
+function DailyGoalPill({ earned, goal, label, doneLabel }: { earned: number; goal: number; label: string; doneLabel: string }) {
+  const percent = Math.min(100, Math.round((earned / goal) * 100))
+  const done = earned >= goal
+  return (
+    <div className="flex items-center gap-3 rounded-full border border-border/60 bg-background/60 px-4 py-2 text-sm">
+      {done ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Target className="h-4 w-4 text-primary" />}
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">{done ? doneLabel : label}:</span>
+          <span className="font-semibold">{earned} / {goal} XP</span>
+        </div>
+        <div className="mt-1 h-1.5 w-28 overflow-hidden rounded-full bg-secondary">
+          <div
+            className={cn("h-full rounded-full transition-all", done ? "bg-green-500" : "bg-gradient-to-r from-primary to-accent")}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
     </div>
   )
 }

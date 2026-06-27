@@ -13,6 +13,9 @@ const nextConfig = {
     ]
   },
   experimental: {
+    // Runs instrumentation.ts register() once at server startup (env validation).
+    // Stable and flag-free in Next 15+; required on Next 14.
+    instrumentationHook: true,
     serverActions: {
       bodySizeLimit: "10mb",
     },

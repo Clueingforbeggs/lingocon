@@ -6,6 +6,24 @@ import { Prisma } from "@prisma/client"
 import { getUserId } from "@/lib/auth-helpers"
 import { revalidatePath } from "next/cache"
 import { checkLanguageBadges } from "@/app/actions/badge"
+import { extractSoundChangeConfig, deriveForm, deriveOptionalForm } from "@/lib/utils/derive-forms"
+
+/**
+ * The child inherits the parent's metadata (phonology, etc.) but with the
+ * sound-change rules removed: those rules describe parent→child and are applied
+ * once during evolution, so keeping them on the child would risk
+ * double-application if the child later runs "apply sound changes".
+ */
+function buildChildMetadata(
+  metadata: Prisma.JsonValue | null,
+): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
+    const { soundChangeRules: _spent, ...rest } = metadata as Record<string, unknown>
+    void _spent
+    return rest as Prisma.InputJsonValue
+  }
+  return (metadata as Prisma.InputJsonValue) ?? Prisma.JsonNull
+}
 
 const evolveLanguageSchema = z.object({
   parentId: z.string(),
@@ -56,6 +74,11 @@ export async function evolveLanguage(input: EvolveLanguageInput) {
       return { error: "Parent language is not authorized to be forked" }
     }
 
+    // If the parent has saved sound-change rules, evolution applies them to the
+    // inherited forms so the descendant is actually sound-shifted rather than a
+    // verbatim copy. No rules → behaves exactly as before (verbatim clone).
+    const soundChange = extractSoundChangeConfig(parent.metadata)
+
     // Start a transaction to ensure all cloning succeeds together
     const newLanguage = await prisma.$transaction(async (tx) => {
       // 1. Create the new language referencing the parent
@@ -74,7 +97,7 @@ export async function evolveLanguage(input: EvolveLanguageInput) {
           fontScale: parent.fontScale,
           allowsDiacritics: parent.allowsDiacritics,
           category: parent.category,
-          metadata: parent.metadata as Prisma.InputJsonValue ?? Prisma.JsonNull,
+          metadata: buildChildMetadata(parent.metadata),
         },
       })
 
@@ -93,47 +116,25 @@ export async function evolveLanguage(input: EvolveLanguageInput) {
         })
       }
 
-      // 3. Clone dictionary entries and auto-link cognate chains.
+      // 3. Clone dictionary entries, applying sound changes to the forms and
+      //    linking each child back to its parent entry (cognate chain) directly
+      //    via sourceEntryId — robust even when the lemma is transformed.
       if (parent.dictionaryEntries.length > 0) {
         await tx.dictionaryEntry.createMany({
           data: parent.dictionaryEntries.map(entry => ({
             languageId: lang.id,
-            lemma: entry.lemma,
+            lemma: soundChange ? deriveForm(entry.lemma, soundChange) : entry.lemma,
             partOfSpeech: entry.partOfSpeech,
             gloss: entry.gloss,
-            ipa: entry.ipa,
+            ipa: soundChange ? deriveOptionalForm(entry.ipa, soundChange) : entry.ipa,
             relatedWords: (entry.relatedWords ?? []) as Prisma.InputJsonValue,
             notes: entry.notes,
             tags: entry.tags as Prisma.InputJsonValue ?? Prisma.JsonNull,
+            // Etymology preserves the original (pre-shift) parent form.
             etymology: entry.etymology || `Derived from ${parent.name}: ${entry.lemma}`,
+            sourceEntryId: entry.id,
           }))
         })
-
-        // 4. Link each cloned entry back to its parent entry via sourceEntryId
-        //    so the cognate chain is immediately populated.
-        const [childEntries, parentEntries] = await Promise.all([
-          tx.dictionaryEntry.findMany({
-            where: { languageId: lang.id },
-            select: { id: true, lemma: true },
-          }),
-          tx.dictionaryEntry.findMany({
-            where: { languageId: parent.id },
-            select: { id: true, lemma: true },
-          }),
-        ])
-
-        const parentIdByLemma = new Map(parentEntries.map(e => [e.lemma, e.id]))
-
-        await Promise.all(
-          childEntries
-            .filter(e => parentIdByLemma.has(e.lemma))
-            .map(e =>
-              tx.dictionaryEntry.update({
-                where: { id: e.id },
-                data: { sourceEntryId: parentIdByLemma.get(e.lemma) },
-              })
-            )
-        )
       }
 
       return lang
@@ -150,6 +151,7 @@ export async function evolveLanguage(input: EvolveLanguageInput) {
     return {
       success: true,
       data: newLanguage,
+      soundChangesApplied: soundChange !== null,
     }
   } catch (error) {
     if (error instanceof z.ZodError) {

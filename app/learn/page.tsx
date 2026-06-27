@@ -55,6 +55,7 @@ export default async function LearnDashboardPage() {
   const isDevMode = process.env.DEV_MODE === "true"
   const userId = session?.user?.id || (isDevMode ? await getDevUserId() : null)
   const t = await getTranslations("learn.dashboard")
+  const tl = await getTranslations("leaderboard")
 
   const enrollments = userId ? await getLearnDashboardData(userId) : []
   const enrolledIds = enrollments.map((e) => e.language.id)
@@ -89,12 +90,20 @@ export default async function LearnDashboardPage() {
                   : t("subheadActive", { count: enrollments.length, due: totalDue })}
             </p>
           </div>
-          <Button asChild size="lg" className="shrink-0 gap-2">
-            <Link href="/learn/browse">
-              <Compass className="h-4 w-4" />
-              {t("courseCatalog")}
-            </Link>
-          </Button>
+          <div className="flex shrink-0 gap-2">
+            <Button asChild variant="outline" size="lg" className="gap-2">
+              <Link href="/learn/leaderboard">
+                <Trophy className="h-4 w-4" />
+                {tl("navLabel")}
+              </Link>
+            </Button>
+            <Button asChild size="lg" className="gap-2">
+              <Link href="/learn/browse">
+                <Compass className="h-4 w-4" />
+                {t("courseCatalog")}
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {enrollments.length > 0 && (

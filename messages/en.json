@@ -1175,7 +1175,28 @@
   "notifications": {
     "title": "Notifications",
     "loading": "Loading...",
-    "empty": "No notifications"
+    "empty": "No notifications",
+    "newFollower": "{actor} followed you",
+    "languageFavorited": "{actor} favorited {language}",
+    "newComment": "New comment on {language}",
+    "commentReply": "{actor} replied to your comment"
+  },
+  "leaderboard": {
+    "navLabel": "Leaderboard",
+    "metaTitle": "Weekly Leaderboard",
+    "metaDescription": "Top learners by XP earned this week.",
+    "eyebrow": "This week",
+    "title": "Weekly Leaderboard",
+    "subtitle": "Top learners by XP earned this week. Resets every Monday.",
+    "rank": "Rank",
+    "learner": "Learner",
+    "xp": "XP",
+    "you": "You",
+    "anonymous": "Anonymous",
+    "yourRank": "Your rank this week",
+    "notRanked": "Earn XP this week to join the leaderboard.",
+    "emptyTitle": "No XP earned yet this week",
+    "emptyDesc": "Study or complete a lesson to claim the top spot."
   },
   "share": {
     "copyLink": "Copy Link",

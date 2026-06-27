@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getUserId } from "@/lib/auth-helpers"
 import { toggleFollowSchema, type ToggleFollowInput } from "@/lib/validations/follow"
 import { checkFollowerBadges } from "@/app/actions/badge"
+import { createNotification } from "@/lib/notifications"
 
 export async function toggleFollow(input: ToggleFollowInput) {
   const userId = await getUserId()
@@ -51,6 +52,22 @@ export async function toggleFollow(input: ToggleFollowInput) {
         data: {
           followerId: userId,
           followingId: validated.followingId,
+        },
+      })
+
+      // Notify the followed user (best-effort).
+      const actor = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, image: true },
+      })
+      await createNotification({
+        recipientId: validated.followingId,
+        type: "NEW_FOLLOWER",
+        actorId: userId,
+        data: {
+          actorName: actor?.name ?? "Someone",
+          actorImage: actor?.image ?? null,
+          href: `/users/${userId}`,
         },
       })
 

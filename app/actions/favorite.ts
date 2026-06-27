@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getUserId } from "@/lib/auth-helpers"
 import { revalidatePath } from "next/cache"
 import { checkFavoriteBadges } from "@/app/actions/badge"
+import { createNotification } from "@/lib/notifications"
 
 export interface ToggleFavoriteInput {
   languageId: string
@@ -52,10 +53,29 @@ export async function toggleFavorite(
       // Check for favorite badges for the language owner
       const language = await prisma.language.findUnique({
         where: { id: input.languageId },
-        select: { ownerId: true },
+        select: { ownerId: true, name: true, slug: true },
       })
       if (language) {
         checkFavoriteBadges(language.ownerId).catch(console.error)
+
+        // Notify the language owner (best-effort).
+        const actor = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true, image: true },
+        })
+        await createNotification({
+          recipientId: language.ownerId,
+          type: "LANGUAGE_FAVORITED",
+          actorId: userId,
+          languageId: input.languageId,
+          data: {
+            actorName: actor?.name ?? "Someone",
+            actorImage: actor?.image ?? null,
+            languageName: language.name,
+            languageSlug: language.slug,
+            href: `/lang/${language.slug}`,
+          },
+        })
       }
     }
 

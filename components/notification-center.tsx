@@ -5,6 +5,11 @@ import { useTranslations } from "next-intl"
 import { getPlatformUpdates } from "@/app/actions/platform-update"
 import { getRecentAchievements } from "@/app/actions/badge"
 import {
+    getNotifications,
+    getUnreadNotificationCount,
+    markNotificationsRead,
+} from "@/app/actions/notification"
+import {
     Bell,
     Sparkles,
     Info,
@@ -15,7 +20,10 @@ import {
     Languages,
     Book,
     FileText,
-    Medal
+    Medal,
+    UserPlus,
+    Heart,
+    MessageSquare
 } from "lucide-react"
 import {
     Popover,
@@ -40,7 +48,7 @@ type PlatformUpdate = {
 
 type NotificationItem = {
     id: string
-    type: 'update' | 'achievement'
+    type: 'update' | 'achievement' | 'personal'
     title: string
     description: string
     icon: any
@@ -55,12 +63,15 @@ export function NotificationCenter() {
     const [loading, setLoading] = useState(true)
     const [isOpen, setIsOpen] = useState(false)
     const [hasNew, setHasNew] = useState(false)
+    const [unreadCount, setUnreadCount] = useState(0)
 
     const fetchData = async () => {
         try {
-            const [updatesResult, achievements] = await Promise.all([
+            const [updatesResult, achievements, personalResult, unreadResult] = await Promise.all([
                 getPlatformUpdates(5),
-                getRecentAchievements(undefined, 48) // check last 48 hours
+                getRecentAchievements(undefined, 48), // check last 48 hours
+                getNotifications(15),
+                getUnreadNotificationCount(),
             ])
 
             let allItems: NotificationItem[] = []
@@ -91,21 +102,57 @@ export function NotificationCenter() {
                 allItems = [...allItems, ...badges]
             }
 
+            if (personalResult.data && personalResult.data.length > 0) {
+                const personal = personalResult.data.map((n: any) => {
+                    const d = n.data || {}
+                    const actor = d.actorName || "Someone"
+                    const language = d.languageName || ""
+                    let title = t("title")
+                    let description = ""
+                    let icon: any = Info
+                    switch (n.type) {
+                        case "NEW_FOLLOWER":
+                            title = t("newFollower", { actor }); icon = UserPlus; break
+                        case "LANGUAGE_FAVORITED":
+                            title = t("languageFavorited", { actor, language }); icon = Heart; break
+                        case "NEW_COMMENT":
+                            title = t("newComment", { language }); description = d.excerpt || ""; icon = MessageSquare; break
+                        case "COMMENT_REPLY":
+                            title = t("commentReply", { actor }); description = d.excerpt || ""; icon = MessageSquare; break
+                    }
+                    return {
+                        id: `notif-${n.id}`,
+                        type: 'personal' as const,
+                        title,
+                        description,
+                        icon,
+                        link: d.href ?? null,
+                        createdAt: new Date(n.createdAt),
+                    }
+                })
+                allItems = [...allItems, ...personal]
+            }
+
             // Sort by date desc
             allItems.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
             setNotifications(allItems)
 
-            // Check for new items since last seen
-            if (allItems.length > 0) {
+            // The bell dot is driven by genuinely unread personal notifications
+            // (DB-backed), falling back to the platform-update / badge recency
+            // heuristic so those still ping.
+            const unread = unreadResult.count ?? 0
+            setUnreadCount(unread)
+            let showDot = unread > 0
+
+            if (!showDot && allItems.length > 0) {
                 const lastSeenId = localStorage.getItem("lingocon_last_seen_notification")
                 const latestId = allItems[0].id
-
                 if (latestId && latestId !== lastSeenId) {
                     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
-                    const isRecent = allItems[0].createdAt > threeDaysAgo
-                    if (isRecent) setHasNew(true)
+                    if (allItems[0].createdAt > threeDaysAgo) showDot = true
                 }
             }
+            setHasNew(showDot)
 
         } catch (error) {
             console.error("Failed to fetch notifications:", error)
@@ -125,6 +172,10 @@ export function NotificationCenter() {
                 setHasNew(false)
                 if (notifications.length > 0) {
                     localStorage.setItem("lingocon_last_seen_notification", notifications[0].id)
+                }
+                if (unreadCount > 0) {
+                    setUnreadCount(0)
+                    markNotificationsRead().catch((e) => console.error("Failed to mark notifications read:", e))
                 }
             }
         }}>
@@ -148,20 +199,31 @@ export function NotificationCenter() {
                         <div className="p-4 text-center text-xs text-muted-foreground">{t("loading")}</div>
                     ) : notifications.length > 0 ? (
                         <div className="divide-y divide-border/40">
-                            {notifications.map((item) => (
-                                <div key={item.id} className="p-4 flex gap-4 hover:bg-muted/50 transition-colors">
-                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                        <item.icon className="h-4 w-4 text-primary" />
+                            {notifications.map((item) => {
+                                const content = (
+                                    <div className="p-4 flex gap-4 hover:bg-muted/50 transition-colors">
+                                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                            <item.icon className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                            <p className="text-sm font-medium leading-none">{item.title}</p>
+                                            {item.description && (
+                                                <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
+                                            )}
+                                            <p className="text-[10px] text-muted-foreground pt-1">
+                                                {formatDistanceToNow(item.createdAt, { addSuffix: true })}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 space-y-1">
-                                        <p className="text-sm font-medium leading-none">{item.title}</p>
-                                        <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
-                                        <p className="text-[10px] text-muted-foreground pt-1">
-                                            {formatDistanceToNow(item.createdAt, { addSuffix: true })}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
+                                )
+                                return item.link ? (
+                                    <Link key={item.id} href={item.link} onClick={() => setIsOpen(false)} className="block">
+                                        {content}
+                                    </Link>
+                                ) : (
+                                    <div key={item.id}>{content}</div>
+                                )
+                            })}
                         </div>
                     ) : (
                         <div className="p-8 text-center text-muted-foreground">

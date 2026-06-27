@@ -60,8 +60,38 @@ model User {
   xpEvents          XPEvent[]
   courses           Course[]
   lessonCompletions LessonCompletion[]
+  notifications     Notification[]
 
   @@map("users")
+}
+
+/// In-app notifications surfaced in the bell (new follower, favorite, comment,
+/// reply). `actor`/`language`/`entity` are stored as denormalized ids plus a
+/// `data` JSON snapshot (actorName, languageName, languageSlug, excerpt, href)
+/// so rendering needs no joins and survives the actor renaming/deleting.
+enum NotificationType {
+  NEW_FOLLOWER
+  LANGUAGE_FAVORITED
+  NEW_COMMENT
+  COMMENT_REPLY
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String           // recipient
+  type       NotificationType
+  read       Boolean          @default(false)
+  actorId    String?          // who triggered it (snapshot in `data`)
+  languageId String?
+  entityId   String?          // e.g. comment id
+  data       Json?
+  createdAt  DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 model Account {
@@ -1122,6 +1152,9 @@ model XPEvent {
   @@index([userId])
   @@index([userId, languageId])
   @@index([userId, createdAt])
+  // Supports the weekly leaderboard window scan (XP summed across all users
+  // since the start of the week).
+  @@index([createdAt])
   @@map("xp_events")
 }
 

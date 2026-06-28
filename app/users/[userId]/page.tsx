@@ -4,7 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import { User, Medal, Users } from "lucide-react"
-import { getSiteUrl, resolveAssetUrl, SITE_NAME, truncate } from "@/lib/seo"
+import { getSiteUrl, resolveAssetUrl, SITE_NAME, truncate, userOgImage } from "@/lib/seo"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -56,7 +56,6 @@ export async function generateMetadata({
     200
   )
   const url = `${getSiteUrl()}/users/${user.id}`
-  const avatar = resolveAssetUrl(user.image)
 
   return {
     title,
@@ -70,13 +69,13 @@ export async function generateMetadata({
       url,
       siteName: SITE_NAME,
       type: "profile",
-      images: avatar ? [{ url: avatar, width: 400, height: 400, alt: name }] : undefined,
+      images: [{ url: userOgImage(user.id), width: 1200, height: 630, alt: `${name} on ${SITE_NAME}` }],
     },
     twitter: {
-      card: avatar ? "summary" : "summary_large_image",
+      card: "summary_large_image",
       title,
       description,
-      images: avatar ? [avatar] : undefined,
+      images: [userOgImage(user.id)],
     },
     alternates: { canonical: url },
   }

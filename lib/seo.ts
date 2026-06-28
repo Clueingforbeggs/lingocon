@@ -82,9 +82,19 @@ export function truncate(text: string, max = 160): string {
   return clean.slice(0, max - 1).trimEnd() + "…"
 }
 
-/** Dynamic OG image URL for a language's family-tree card. */
+/** Dynamic OG image URL for a language's family-tree card (diachronics-focused). */
 export function languageOgImage(languageId: string): string {
   return `${getAppUrl()}/api/og/family-tree/${languageId}`
+}
+
+/** Dynamic OG image URL for a language hub's content card (words/grammar/alphabet). */
+export function languageCardOgImage(languageId: string): string {
+  return `${getAppUrl()}/api/og/language/${languageId}`
+}
+
+/** Dynamic OG image URL for a creator profile card. */
+export function userOgImage(userId: string): string {
+  return `${getAppUrl()}/api/og/user/${userId}`
 }
 
 /** Robots block that keeps a page out of the index but still followable. */
@@ -150,10 +160,10 @@ export function buildLanguageMetadata(
     ogImages.push({ url: flag, width: 800, height: 600, alt: `Flag of the ${language.name} constructed language` })
   }
   ogImages.push({
-    url: languageOgImage(language.id),
+    url: languageCardOgImage(language.id),
     width: 1200,
     height: 630,
-    alt: `${language.name} language family tree on ${SITE_NAME}`,
+    alt: `${language.name} — a constructed language on ${SITE_NAME}`,
   })
 
   const keywords = [

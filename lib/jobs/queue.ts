@@ -3,6 +3,10 @@ import type { Prisma } from "@prisma/client"
 
 export const MAX_ATTEMPTS = 3
 export const RETRY_BACKOFF_MS = 5 * 60 * 1000
+// Claims older than this are presumed dead-worker leftovers and become reclaimable.
+export const STALE_CLAIM_MS = 15 * 60 * 1000
+// Bounded so a hot race can't spin the poll loop; 5 losses in a row with a
+// single-digit worker count means try again next poll tick.
 const CLAIM_RACE_RETRIES = 5
 
 export interface EnqueueOptions {
@@ -21,11 +25,20 @@ export async function enqueueJob(
 
 // Claim the oldest due job. The conditional updateMany IS the lock: if another
 // worker claimed the candidate first, count is 0 and we try the next one.
+// A job is claimable when it is due, has attempts left, is not finished, and
+// either was never started or its claim went stale (dead worker). The
+// finishedAt: null check is required so completed jobs (which keep startedAt
+// set) are never reclaimed once their claim ages past STALE_CLAIM_MS.
 export async function claimNextJob(now: Date = new Date()) {
+  const staleBefore = new Date(now.getTime() - STALE_CLAIM_MS)
+  const claimable = {
+    finishedAt: null,
+    OR: [{ startedAt: null }, { startedAt: { lt: staleBefore } }],
+  }
   for (let attempt = 0; attempt < CLAIM_RACE_RETRIES; attempt++) {
     const candidate = await prisma.job.findFirst({
       where: {
-        startedAt: null,
+        ...claimable,
         runAfter: { lte: now },
         attempts: { lt: MAX_ATTEMPTS },
       },
@@ -34,7 +47,7 @@ export async function claimNextJob(now: Date = new Date()) {
     if (!candidate) return null
 
     const claimed = await prisma.job.updateMany({
-      where: { id: candidate.id, startedAt: null },
+      where: { id: candidate.id, ...claimable },
       data: { startedAt: now, attempts: { increment: 1 } },
     })
     if (claimed.count === 1) return candidate

@@ -14,7 +14,7 @@ const { mockPrisma } = vi.hoisted(() => ({
 
 vi.mock("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
-import { enqueueJob, claimNextJob, completeJob, failJob, MAX_ATTEMPTS, RETRY_BACKOFF_MS } from "@/lib/jobs/queue"
+import { enqueueJob, claimNextJob, completeJob, failJob, MAX_ATTEMPTS, RETRY_BACKOFF_MS, STALE_CLAIM_MS } from "@/lib/jobs/queue"
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -47,13 +47,48 @@ describe("claimNextJob", () => {
   })
 
   it("claims the oldest due job via a conditional update", async () => {
+    const now = new Date("2026-07-03T12:00:00Z")
     const job = { id: "j1", type: "heartbeat", payload: {}, attempts: 0 }
     mockPrisma.job.findFirst.mockResolvedValueOnce(job)
     mockPrisma.job.updateMany.mockResolvedValueOnce({ count: 1 })
-    const claimed = await claimNextJob()
+    const claimed = await claimNextJob(now)
     expect(claimed).toEqual(job)
     const where = mockPrisma.job.updateMany.mock.calls[0][0].where
-    expect(where).toEqual({ id: "j1", startedAt: null })
+    expect(where).toEqual({
+      id: "j1",
+      finishedAt: null,
+      OR: [{ startedAt: null }, { startedAt: { lt: new Date(now.getTime() - STALE_CLAIM_MS) } }],
+    })
+  })
+
+  it("reclaims a stale claim from a dead worker", async () => {
+    const now = new Date("2026-07-03T12:00:00Z")
+    const staleThreshold = new Date(now.getTime() - STALE_CLAIM_MS)
+    const job = {
+      id: "j1",
+      type: "heartbeat",
+      payload: {},
+      attempts: 1,
+      startedAt: new Date(now.getTime() - STALE_CLAIM_MS - 60_000),
+    }
+    mockPrisma.job.findFirst.mockResolvedValueOnce(job)
+    mockPrisma.job.updateMany.mockResolvedValueOnce({ count: 1 })
+    const claimed = await claimNextJob(now)
+    expect(claimed).toEqual(job)
+    const findWhere = mockPrisma.job.findFirst.mock.calls[0][0].where
+    expect(findWhere.finishedAt).toBeNull()
+    expect(findWhere.OR).toEqual([{ startedAt: null }, { startedAt: { lt: staleThreshold } }])
+    const claimWhere = mockPrisma.job.updateMany.mock.calls[0][0].where
+    expect(claimWhere.finishedAt).toBeNull()
+    expect(claimWhere.OR).toEqual([{ startedAt: null }, { startedAt: { lt: staleThreshold } }])
+  })
+
+  it("returns null after exhausting claim retries", async () => {
+    const job = { id: "j1", type: "heartbeat", payload: {}, attempts: 0 }
+    mockPrisma.job.findFirst.mockResolvedValue(job)
+    mockPrisma.job.updateMany.mockResolvedValue({ count: 0 })
+    expect(await claimNextJob()).toBeNull()
+    expect(mockPrisma.job.updateMany).toHaveBeenCalledTimes(5)
   })
 
   it("retries the next candidate when another worker won the race", async () => {
@@ -68,11 +103,16 @@ describe("claimNextJob", () => {
   })
 
   it("only considers jobs with remaining attempts", async () => {
+    const now = new Date("2026-07-03T12:00:00Z")
     mockPrisma.job.findFirst.mockResolvedValueOnce(null)
-    await claimNextJob()
+    await claimNextJob(now)
     const where = mockPrisma.job.findFirst.mock.calls[0][0].where
     expect(where.attempts).toEqual({ lt: MAX_ATTEMPTS })
-    expect(where.startedAt).toBeNull()
+    expect(where.finishedAt).toBeNull()
+    expect(where.OR).toEqual([
+      { startedAt: null },
+      { startedAt: { lt: new Date(now.getTime() - STALE_CLAIM_MS) } },
+    ])
   })
 })
 
@@ -101,6 +141,12 @@ describe("failJob", () => {
     mockPrisma.job.findUnique.mockResolvedValueOnce({ id: "j1", attempts: 1 })
     await failJob("j1", "string failure")
     expect(mockPrisma.job.update.mock.calls[0][0].data.error).toBe("string failure")
+  })
+
+  it("truncates error messages to 2000 chars", async () => {
+    mockPrisma.job.findUnique.mockResolvedValueOnce({ id: "j1", attempts: 1 })
+    await failJob("j1", new Error("x".repeat(3000)))
+    expect(mockPrisma.job.update.mock.calls[0][0].data.error).toHaveLength(2000)
   })
 
   it("is a no-op when the job vanished", async () => {

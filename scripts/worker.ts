@@ -38,8 +38,8 @@ async function processOne(): Promise<boolean> {
 }
 
 async function drain() {
-  while (await processOne()) {
-    // keep going until the queue is empty
+  while (!shuttingDown && (await processOne())) {
+    // keep going until the queue is empty (or we're asked to stop)
   }
 }
 

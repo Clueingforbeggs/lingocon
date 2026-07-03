@@ -1195,3 +1195,22 @@ model LessonCompletion {
   @@index([userId])
   @@map("lesson_completions")
 }
+
+// Background job queue processed by scripts/worker.ts (PM2 app "lingocon-worker").
+// A job is claimable when startedAt is null, runAfter has passed, and attempts
+// remain. Failed jobs release their claim with a backoff; after MAX_ATTEMPTS
+// they stay visible (finishedAt null, error set) for inspection.
+model Job {
+  id         String    @id @default(cuid())
+  type       String    // 'heartbeat' | 'league_rollover' | 'inflection_regen' | ...
+  payload    Json      @default("{}")
+  runAfter   DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+  error      String?   @db.Text
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([startedAt, runAfter])
+  @@map("jobs")
+}

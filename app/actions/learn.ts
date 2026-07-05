@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { requireAuth, getUserId, canEditLanguage, canViewLanguage } from "@/lib/auth-helpers"
 import { scheduleReview, createNewCard, computeLessonXp, LESSON_XP, type CardTypeKey, type RatingKey, type FSRSCardState } from "@/lib/fsrs"
+import { blankWholeWord } from "@/lib/cloze"
 import { nextStreak } from "@/lib/streak"
 import { State } from "ts-fsrs"
 import { revalidatePath } from "next/cache"
@@ -804,6 +805,22 @@ export async function deleteCourse(courseId: string) {
 // ─── Card Seeding ─────────────────────────────────────────────────────────────
 
 /**
+ * Picks the first example sentence that actually contains the lemma as a whole
+ * word and returns its fill-in-the-blank "front" (all occurrences masked).
+ * Returns null when none of the examples contain the lemma.
+ */
+function firstClozeFront(
+  examples: { sentence: string }[],
+  lemma: string,
+): string | null {
+  for (const ex of examples) {
+    const front = blankWholeWord(ex.sentence, lemma)
+    if (front !== null) return front
+  }
+  return null
+}
+
+/**
  * Called on every study-session start to pick up vocabulary entries added
  * after initial enrollment. Processes up to 100 new entries per call so the
  * response stays fast; subsequent sessions will gradually catch up.
@@ -830,7 +847,10 @@ export async function syncNewVocabCards(languageId: string) {
 
   const newEntries = await prisma.dictionaryEntry.findMany({
     where: { languageId, id: { notIn: [...seenIds] } },
-    select: { id: true, lemma: true, gloss: true, ipa: true, partOfSpeech: true },
+    select: {
+      id: true, lemma: true, gloss: true, ipa: true, partOfSpeech: true,
+      exampleSentences: { select: { id: true, sentence: true, translation: true }, take: 3 },
+    },
     orderBy: { createdAt: "asc" },
     take: 100,
   })
@@ -839,34 +859,53 @@ export async function syncNewVocabCards(languageId: string) {
 
   const base = createNewCard()
   await prisma.studyCard.createMany({
-    data: newEntries.flatMap(e => [
-      {
-        enrollmentId: enrollment.id,
-        dictEntryId:  e.id,
-        cardType:     "VOCAB_RECOGNITION" as const,
-        front:        e.lemma,
-        back:         `${e.gloss}${e.ipa ? `\n/${e.ipa}/` : ""}${e.partOfSpeech ? ` · ${e.partOfSpeech}` : ""}`,
-        due:          base.due,
-        stability:    base.stability,
-        difficulty:   base.difficulty,
-        state:        "NEW" as const,
-        elapsedDays:   base.elapsed_days,
-        scheduledDays: base.scheduled_days,
-      },
-      {
-        enrollmentId: enrollment.id,
-        dictEntryId:  e.id,
-        cardType:     "VOCAB_PRODUCTION" as const,
-        front:        e.gloss,
-        back:         `${e.lemma}${e.ipa ? ` /${e.ipa}/` : ""}`,
-        due:          base.due,
-        stability:    base.stability,
-        difficulty:   base.difficulty,
-        state:        "NEW" as const,
-        elapsedDays:   base.elapsed_days,
-        scheduledDays: base.scheduled_days,
-      },
-    ]),
+    data: newEntries.flatMap(e => {
+      const clozeFront = firstClozeFront(e.exampleSentences, e.lemma)
+
+      return [
+        {
+          enrollmentId: enrollment.id,
+          dictEntryId:  e.id,
+          cardType:     "VOCAB_RECOGNITION" as const,
+          front:        e.lemma,
+          back:         `${e.gloss}${e.ipa ? `\n/${e.ipa}/` : ""}${e.partOfSpeech ? ` · ${e.partOfSpeech}` : ""}`,
+          due:          base.due,
+          stability:    base.stability,
+          difficulty:   base.difficulty,
+          state:        "NEW" as const,
+          elapsedDays:   base.elapsed_days,
+          scheduledDays: base.scheduled_days,
+        },
+        {
+          enrollmentId: enrollment.id,
+          dictEntryId:  e.id,
+          cardType:     "VOCAB_PRODUCTION" as const,
+          front:        e.gloss,
+          back:         `${e.lemma}${e.ipa ? ` /${e.ipa}/` : ""}`,
+          due:          base.due,
+          stability:    base.stability,
+          difficulty:   base.difficulty,
+          state:        "NEW" as const,
+          elapsedDays:   base.elapsed_days,
+          scheduledDays: base.scheduled_days,
+        },
+        ...(clozeFront
+          ? [{
+              enrollmentId: enrollment.id,
+              dictEntryId:  e.id,
+              cardType:     "CLOZE" as const,
+              front:        clozeFront,
+              back:         e.lemma,
+              due:          base.due,
+              stability:    base.stability,
+              difficulty:   base.difficulty,
+              state:        "NEW" as const,
+              elapsedDays:   base.elapsed_days,
+              scheduledDays: base.scheduled_days,
+            }]
+          : []),
+      ]
+    }),
     skipDuplicates: true,
   })
 }
@@ -874,7 +913,10 @@ export async function syncNewVocabCards(languageId: string) {
 async function seedVocabCards(enrollmentId: string, languageId: string) {
   const entries = await prisma.dictionaryEntry.findMany({
     where: { languageId },
-    select: { id: true, lemma: true, gloss: true, ipa: true, partOfSpeech: true },
+    select: {
+      id: true, lemma: true, gloss: true, ipa: true, partOfSpeech: true,
+      exampleSentences: { select: { id: true, sentence: true, translation: true }, take: 3 },
+    },
     orderBy: { lemma: "asc" },
     take: 500, // cap initial seed
   })
@@ -884,34 +926,53 @@ async function seedVocabCards(enrollmentId: string, languageId: string) {
   const newCard = createNewCard()
 
   await prisma.studyCard.createMany({
-    data: entries.flatMap(e => [
-      {
-        enrollmentId,
-        dictEntryId: e.id,
-        cardType:    "VOCAB_RECOGNITION" as const,
-        front:       e.lemma,
-        back:        `${e.gloss}${e.ipa ? `\n/${e.ipa}/` : ""}${e.partOfSpeech ? ` · ${e.partOfSpeech}` : ""}`,
-        due:         newCard.due,
-        stability:   newCard.stability,
-        difficulty:  newCard.difficulty,
-        state:       "NEW" as const,
-        elapsedDays:   newCard.elapsed_days,
-        scheduledDays: newCard.scheduled_days,
-      },
-      {
-        enrollmentId,
-        dictEntryId: e.id,
-        cardType:    "VOCAB_PRODUCTION" as const,
-        front:       e.gloss,
-        back:        `${e.lemma}${e.ipa ? ` /${e.ipa}/` : ""}`,
-        due:         newCard.due,
-        stability:   newCard.stability,
-        difficulty:  newCard.difficulty,
-        state:       "NEW" as const,
-        elapsedDays:   newCard.elapsed_days,
-        scheduledDays: newCard.scheduled_days,
-      },
-    ]),
+    data: entries.flatMap(e => {
+      const clozeFront = firstClozeFront(e.exampleSentences, e.lemma)
+
+      return [
+        {
+          enrollmentId,
+          dictEntryId: e.id,
+          cardType:    "VOCAB_RECOGNITION" as const,
+          front:       e.lemma,
+          back:        `${e.gloss}${e.ipa ? `\n/${e.ipa}/` : ""}${e.partOfSpeech ? ` · ${e.partOfSpeech}` : ""}`,
+          due:         newCard.due,
+          stability:   newCard.stability,
+          difficulty:  newCard.difficulty,
+          state:       "NEW" as const,
+          elapsedDays:   newCard.elapsed_days,
+          scheduledDays: newCard.scheduled_days,
+        },
+        {
+          enrollmentId,
+          dictEntryId: e.id,
+          cardType:    "VOCAB_PRODUCTION" as const,
+          front:       e.gloss,
+          back:        `${e.lemma}${e.ipa ? ` /${e.ipa}/` : ""}`,
+          due:         newCard.due,
+          stability:   newCard.stability,
+          difficulty:  newCard.difficulty,
+          state:       "NEW" as const,
+          elapsedDays:   newCard.elapsed_days,
+          scheduledDays: newCard.scheduled_days,
+        },
+        ...(clozeFront
+          ? [{
+              enrollmentId,
+              dictEntryId: e.id,
+              cardType:    "CLOZE" as const,
+              front:       clozeFront,
+              back:        e.lemma,
+              due:         newCard.due,
+              stability:   newCard.stability,
+              difficulty:  newCard.difficulty,
+              state:       "NEW" as const,
+              elapsedDays:   newCard.elapsed_days,
+              scheduledDays: newCard.scheduled_days,
+            }]
+          : []),
+      ]
+    }),
     skipDuplicates: true,
   })
 }

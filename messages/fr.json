@@ -623,6 +623,8 @@
       "exportCsvDesc": "Compatible tableur",
       "exportJson": "Données JSON",
       "exportJsonDesc": "Export brut de la base de données",
+      "exportAnki": "Paquet Anki (CSV)",
+      "exportAnkiDesc": "Cartes importables",
       "generalHeading": "Paramètres généraux",
       "nameLabel": "Nom",
       "slugLabel": "Slug",

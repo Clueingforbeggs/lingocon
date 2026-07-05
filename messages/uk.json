@@ -623,6 +623,8 @@
       "exportCsvDesc": "Сумісно з таблицями",
       "exportJson": "Дані JSON",
       "exportJsonDesc": "Прямий експорт із бази даних",
+      "exportAnki": "Колода Anki (CSV)",
+      "exportAnkiDesc": "Картки для імпорту",
       "generalHeading": "Загальні налаштування",
       "nameLabel": "Назва",
       "slugLabel": "Ідентифікатор",

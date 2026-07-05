@@ -623,6 +623,8 @@
       "exportCsvDesc": "Spreadsheet Compatible",
       "exportJson": "JSON Data",
       "exportJsonDesc": "Raw Database Export",
+      "exportAnki": "Anki Deck (CSV)",
+      "exportAnkiDesc": "Importable Flashcards",
       "generalHeading": "General Settings",
       "nameLabel": "Name",
       "slugLabel": "Slug",

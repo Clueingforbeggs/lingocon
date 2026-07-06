@@ -100,6 +100,33 @@ func TestParseClassLine(t *testing.T) {
 	}
 }
 
+// TestReservedClassNames asserts that V and C — the built-in vowel/consonant
+// classes — cannot be shadowed by a user definition. `class V = ...` and
+// `class C = ...` are rejected by parseClassLine and dropped by Parse, exactly
+// as the canonical TS engine does, so identical input yields identical
+// behavior across both engines.
+func TestReservedClassNames(t *testing.T) {
+	for _, line := range []string{
+		"class V = a i u",
+		"class C = p t k",
+	} {
+		if _, _, ok := parseClassLine(line); ok {
+			t.Errorf("parseClassLine(%q) accepted a reserved class name, want rejected", line)
+		}
+	}
+
+	// Parse must drop reserved-name definitions entirely: they land in
+	// neither Classes (reserved) nor Rules (they are not rules).
+	prog := Parse("class V = a i u\nclass C = p t k\na → e / _#")
+	if len(prog.Classes) != 0 {
+		t.Errorf("Parse Classes = %v, want empty (V/C reserved)", prog.Classes)
+	}
+	wantRules := ParseRules("a → e / _#")
+	if !reflect.DeepEqual(prog.Rules, wantRules) {
+		t.Errorf("Parse Rules = %+v, want %+v", prog.Rules, wantRules)
+	}
+}
+
 func TestParse(t *testing.T) {
 	text := `
 class K = p t k
@@ -264,17 +291,20 @@ func TestLiteralTargetStillWorksWithClassesRegistered(t *testing.T) {
 }
 
 func TestClassTargetComposedWithClassEnvironment(t *testing.T) {
+	// Two distinct user classes: K is the rule target, N is used in the
+	// environment. N is a non-reserved name (V and C are reserved for the
+	// built-in vowel/consonant classes and cannot be user-defined).
 	classes := map[string][]string{
 		"K": {"p", "t", "k"},
-		"V": {"a", "i"}, // shadow name distinct from built-in vowel token semantics
+		"N": {"a", "i"},
 	}
-	// Any K member between two V-class vowels becomes h.
-	if got := runWithClasses(t, classes, "K → h / V_V", "apa"); got != "aha" {
-		t.Errorf("K -> h / V_V on apa = %q, want %q", got, "aha")
+	// Any K member between two N-class members becomes h.
+	if got := runWithClasses(t, classes, "K → h / N_N", "apa"); got != "aha" {
+		t.Errorf("K -> h / N_N on apa = %q, want %q", got, "aha")
 	}
-	// K member at word edge (no left V) is not replaced.
-	if got := runWithClasses(t, classes, "K → h / V_V", "pa"); got != "pa" {
-		t.Errorf("K -> h / V_V on pa = %q, want %q (p has no left V)", got, "pa")
+	// K member at word edge (no left N) is not replaced.
+	if got := runWithClasses(t, classes, "K → h / N_N", "pa"); got != "pa" {
+		t.Errorf("K -> h / N_N on pa = %q, want %q (p has no left N)", got, "pa")
 	}
 }
 
@@ -288,5 +318,77 @@ func TestNewEngineWithClassesNilIsBackwardCompatible(t *testing.T) {
 	r, _ := ParseRule("t → d / V_V")
 	if got, want := withClasses.ApplyRule("atu", r), plain.ApplyRule("atu", r); got != want {
 		t.Errorf("NewEngineWithClasses(v,c,nil) diverges from NewEngine(v,c): got %q, want %q", got, want)
+	}
+}
+
+// TestCrossEngineParityGoldenCases pins the Go engine to the SAME
+// input→output golden tables the canonical TS engine is tested against, so
+// the two engines are proven to agree. It exercises the full whole-program
+// path the WASM bindings use: Parse (splitting class defs from rules) +
+// NewEngineOrDefaultWithClasses + ApplyPipeline. Any divergence here means
+// the browser-preview WASM engine and the server-side TS engine would produce
+// different results on identical input.
+func TestCrossEngineParityGoldenCases(t *testing.T) {
+	// Class-as-target with word-final deletion. Mirrors the TS derive-forms
+	// test: soundChangeRules "class K = p t k\nK → ∅ / _#".
+	t.Run("class-target-final-deletion", func(t *testing.T) {
+		prog := Parse("class K = p t k\nK → ∅ / _#")
+		e := NewEngineOrDefaultWithClasses(nil, nil, prog.Classes)
+		cases := []struct{ word, want string }{
+			{"kat", "ka"},
+			{"tap", "ta"},
+			{"sak", "sa"},
+		}
+		for _, c := range cases {
+			if got := e.ApplyPipeline(c.word, prog.Rules).Changed; got != c.want {
+				t.Errorf("K → ∅ / _# on %q = %q, want %q", c.word, got, c.want)
+			}
+		}
+	})
+
+	// Class in the RIGHT environment. Mirrors the TS sound-change test:
+	// rule "a → e / _K" with class K = {p, t, k}.
+	t.Run("class-right-environment", func(t *testing.T) {
+		prog := Parse("class K = p t k\na → e / _K")
+		e := NewEngineOrDefaultWithClasses(nil, nil, prog.Classes)
+		cases := []struct{ word, want string }{
+			{"atapa", "etepa"}, // both a's before a K member (t, p) raise
+			{"asa", "asa"},     // a before s (not a K member) -> unchanged
+		}
+		for _, c := range cases {
+			if got := e.ApplyPipeline(c.word, prog.Rules).Changed; got != c.want {
+				t.Errorf("a → e / _K on %q = %q, want %q", c.word, got, c.want)
+			}
+		}
+	})
+}
+
+// TestNewEngineOrDefaultWithClasses confirms the constructor both defaults the
+// inventories (like NewEngineOrDefault) and registers classes (like
+// NewEngineWithClasses) — the exact combination the WASM bindings rely on.
+func TestNewEngineOrDefaultWithClasses(t *testing.T) {
+	classes := map[string][]string{"K": {"p", "t", "k"}}
+
+	// nil inventories must be defaulted: a V-token rule fires against the
+	// built-in vowel set (default 'a' is a vowel), and the K class works.
+	withClasses := NewEngineOrDefaultWithClasses(nil, nil, classes)
+	defaulted := NewEngineOrDefault(nil, nil)
+
+	// V/C behavior must be identical to NewEngineOrDefault for a class-free rule.
+	rVC, _ := ParseRule("t → d / V_V")
+	if got, want := withClasses.ApplyRule("ata", rVC), defaulted.ApplyRule("ata", rVC); got != want {
+		t.Errorf("defaulting diverges from NewEngineOrDefault: got %q, want %q", got, want)
+	}
+
+	// The registered class must be honored as a target.
+	rK, _ := ParseRule("K → h")
+	if got := withClasses.ApplyRule("tapak", rK); got != "hahah" {
+		t.Errorf("K → h on tapak = %q, want %q", got, "hahah")
+	}
+
+	// An empty/nil classes map is a no-op: behaves like NewEngineOrDefault.
+	noClasses := NewEngineOrDefaultWithClasses(nil, nil, nil)
+	if got, want := noClasses.ApplyRule("ata", rVC), defaulted.ApplyRule("ata", rVC); got != want {
+		t.Errorf("nil classes should behave like NewEngineOrDefault: got %q, want %q", got, want)
 	}
 }

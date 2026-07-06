@@ -48,11 +48,13 @@ const (
 	tokBoundary // #
 	tokAny      // .
 	tokLiteral
+	tokClass // user-defined named class (matches any one member)
 )
 
 type token struct {
-	kind tokenKind
-	lit  []rune // for tokLiteral
+	kind  tokenKind
+	lit   []rune   // for tokLiteral
+	class [][]rune // for tokClass: members, longest-first
 }
 
 // Engine holds the phoneme classes (vowels/consonants), stored longest-first so
@@ -60,6 +62,12 @@ type token struct {
 type Engine struct {
 	vowels     [][]rune
 	consonants [][]rune
+	// userClasses maps a class name to its members (longest-first).
+	userClasses map[string][][]rune
+	// userClassNames holds userClasses' keys sorted longest-first,
+	// precomputed once at construction so tokenize never re-sorts this
+	// invariant list on the hot path.
+	userClassNames []string
 }
 
 // NewEngine builds an engine from explicit vowel/consonant inventories.
@@ -68,6 +76,30 @@ func NewEngine(vowels, consonants []string) *Engine {
 		vowels:     toSortedRunes(vowels),
 		consonants: toSortedRunes(consonants),
 	}
+}
+
+// NewEngineWithClasses builds an engine from explicit vowel/consonant
+// inventories plus user-defined named sound classes (as parsed into
+// Program.Classes). Each class's members are stored longest-first, exactly
+// like vowels/consonants, so multi-rune members match before their prefixes.
+//
+// An engine built with a nil/empty classes map behaves identically to
+// NewEngine, since tokenize/ApplyRule only special-case names present in
+// userClasses.
+func NewEngineWithClasses(vowels, consonants []string, classes map[string][]string) *Engine {
+	e := NewEngine(vowels, consonants)
+	if len(classes) == 0 {
+		return e
+	}
+	e.userClasses = make(map[string][][]rune, len(classes))
+	for name, members := range classes {
+		e.userClasses[name] = toSortedRunes(members)
+	}
+	// Precompute the longest-first-sorted class names once; this list is
+	// invariant for the engine's lifetime, so tokenize reuses it instead of
+	// re-sorting on every call.
+	e.userClassNames = sortedClassNames(e.userClasses)
+	return e
 }
 
 // DefaultEngine uses the comprehensive default IPA inventory.
@@ -156,10 +188,28 @@ func ParseRules(text string) []Rule {
 	return rules
 }
 
-func tokenize(env string) []token {
+// tokenize splits an environment string into matcher tokens. classNames is
+// the class-name list already sorted longest-first (precomputed once on the
+// Engine), and classes maps each name to its (longest-first) members; at each
+// position we try to match the longest defined class name before falling
+// back to the built-in V/C/#/. tokens or a literal rune. Nil classNames/
+// classes make this behave exactly as it did before user classes existed.
+func tokenize(env string, classNames []string, classes map[string][][]rune) []token {
+	runes := []rune(env)
 	var toks []token
-	for _, ch := range env {
-		switch ch {
+	for i := 0; i < len(runes); {
+		// classNames is sorted longest-first, so the first name that is a
+		// rune-prefix here is the longest match. Two distinct class names
+		// cannot both match at this position with equal rune length — the
+		// substring of a given length at a given offset is unique — so map
+		// iteration order (and thus tie-break stability) is not
+		// load-bearing: tokenization is deterministic regardless.
+		if name, n := matchLongestClassName(runes, i, classNames); n > 0 {
+			toks = append(toks, token{kind: tokClass, class: classes[name]})
+			i += n
+			continue
+		}
+		switch runes[i] {
 		case '#':
 			toks = append(toks, token{kind: tokBoundary})
 		case 'V':
@@ -169,10 +219,41 @@ func tokenize(env string) []token {
 		case '.':
 			toks = append(toks, token{kind: tokAny})
 		default:
-			toks = append(toks, token{kind: tokLiteral, lit: []rune{ch}})
+			toks = append(toks, token{kind: tokLiteral, lit: []rune{runes[i]}})
 		}
+		i++
 	}
 	return toks
+}
+
+// sortedClassNames returns the class names sorted longest-first (by rune
+// count), so a name that is a prefix of another (e.g. "K" vs "KW") never
+// shadows the longer match.
+func sortedClassNames(classes map[string][][]rune) []string {
+	if len(classes) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(classes))
+	for name := range classes {
+		names = append(names, name)
+	}
+	sort.SliceStable(names, func(i, j int) bool {
+		return len([]rune(names[i])) > len([]rune(names[j]))
+	})
+	return names
+}
+
+// matchLongestClassName returns the first (longest, by construction of
+// names) class name that is a rune-prefix of runes[p:], and its rune length.
+// Returns ("", 0) if none matches.
+func matchLongestClassName(runes []rune, p int, names []string) (string, int) {
+	for _, name := range names {
+		nameRunes := []rune(name)
+		if p+len(nameRunes) <= len(runes) && equalRunes(runes[p:p+len(nameRunes)], nameRunes) {
+			return name, len(nameRunes)
+		}
+	}
+	return "", 0
 }
 
 func (e *Engine) class(k tokenKind) [][]rune {
@@ -231,6 +312,12 @@ func (e *Engine) rightMatch(runes []rune, p int, toks []token) bool {
 				return false
 			}
 			p += n
+		case tokClass:
+			n := matchPrefixClass(runes, p, t.class)
+			if n < 0 {
+				return false
+			}
+			p += n
 		case tokAny:
 			if p >= len(runes) {
 				return false
@@ -262,6 +349,12 @@ func (e *Engine) leftMatch(runes []rune, end int, toks []token) bool {
 				return false
 			}
 			end -= n
+		case tokClass:
+			n := matchSuffixClass(runes, end, t.class)
+			if n < 0 {
+				return false
+			}
+			end -= n
 		case tokAny:
 			if end <= 0 {
 				return false
@@ -279,25 +372,41 @@ func (e *Engine) leftMatch(runes []rune, end int, toks []token) bool {
 
 // ApplyRule applies one rule to a word, left-to-right. Targets are consumed;
 // environments are zero-width assertions against the original word.
+//
+// If r.Target names a registered user class, any one member of that class
+// matches at the target position (longest member first), and the whole
+// matched member is replaced by r.Replacement — the class acts as a
+// whole-word target, not just an environment token. Otherwise r.Target is
+// matched literally, exactly as before user classes existed.
 func (e *Engine) ApplyRule(word string, r Rule) string {
 	if !r.Enabled || r.Target == "" {
 		return word
 	}
 	runes := []rune(word)
-	target := []rune(r.Target)
-	left := tokenize(r.LeftEnv)
-	right := tokenize(r.RightEnv)
+	left := tokenize(r.LeftEnv, e.userClassNames, e.userClasses)
+	right := tokenize(r.RightEnv, e.userClassNames, e.userClasses)
 	repl := []rune(r.Replacement)
+
+	targetClass, isClassTarget := e.userClasses[r.Target]
+	target := []rune(r.Target)
 
 	var out []rune
 	i := 0
 	for i < len(runes) {
-		if i+len(target) <= len(runes) &&
-			equalRunes(runes[i:i+len(target)], target) &&
+		var matchLen int
+		if isClassTarget {
+			matchLen = matchPrefixClass(runes, i, targetClass)
+		} else if i+len(target) <= len(runes) && equalRunes(runes[i:i+len(target)], target) {
+			matchLen = len(target)
+		} else {
+			matchLen = -1
+		}
+
+		if matchLen >= 0 &&
 			e.leftMatch(runes, i, left) &&
-			e.rightMatch(runes, i+len(target), right) {
+			e.rightMatch(runes, i+matchLen, right) {
 			out = append(out, repl...)
-			i += len(target)
+			i += matchLen
 		} else {
 			out = append(out, runes[i])
 			i++

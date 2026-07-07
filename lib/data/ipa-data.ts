@@ -105,6 +105,46 @@ export const IPA_CONSONANT_MAP: Record<string, { place: string; manner: string; 
 export const VOWEL_HEIGHTS = ["Close", "Near-close", "Close-mid", "Mid", "Open-mid", "Near-open", "Open"] as const
 export const VOWEL_BACKNESS = ["Front", "Central", "Back"] as const
 
+export type PhonemeKind = "consonant" | "vowel" | null
+
+/**
+ * Strip IPA diacritics from a symbol to recover its base letter for
+ * classification. Removes both combining marks (U+0300–U+036F and the
+ * Combining Diacritical Marks Supplement U+1DC0–U+1DFF) and spacing modifier
+ * letters (U+02B0–U+02FF: ʰ ʷ ʲ ˠ ˤ ʼ ˞ and the length marks ː ˑ), which is the
+ * block where aspiration/labialization/length live. Affricate tie bars
+ * (U+0361 / U+035C) fall inside the combining range and are stripped too.
+ *
+ * The caller keeps the full symbol; this base is only used to look up
+ * place/manner/height in the maps, so e.g. tʰ, kʷ, aː, ɑ̃ resolve to t, k, a, ɑ.
+ */
+export function getBaseIpa(symbol: string): string {
+    return symbol
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f\u1dc0-\u1dff]/g, "") // combining marks
+        .replace(/[\u02b0-\u02ff]/g, "") // spacing modifier letters: aspiration, labialization, length, etc.
+}
+
+/**
+ * Classify an IPA symbol as a consonant or vowel, tolerating diacritics and the
+ * chart wrappers/tie bars the keyboard emits. Tries the cleaned symbol as a
+ * direct map key first (so distinct diacriticized keys like e̞ and affricates
+ * like t͡s → ts resolve correctly), then falls back to the diacritic-stripped
+ * base. Returns null when neither the symbol nor its base is a known phoneme.
+ */
+export function getPhonemeKind(symbol: string): PhonemeKind {
+    const cleaned = symbol
+        .replace(/[\/\[\]]/g, "")
+        .replace(/[\u0361\u035c]/g, "")
+        .trim()
+    const base = getBaseIpa(cleaned)
+    if (IPA_CONSONANT_MAP[cleaned]) return "consonant"
+    if (IPA_VOWEL_MAP[cleaned]) return "vowel"
+    if (IPA_CONSONANT_MAP[base]) return "consonant"
+    if (IPA_VOWEL_MAP[base]) return "vowel"
+    return null
+}
+
 export const IPA_VOWEL_MAP: Record<string, { height: string; backness: string; rounded: boolean }> = {
     "i": { height: "Close", backness: "Front", rounded: false },
     "y": { height: "Close", backness: "Front", rounded: true },
@@ -141,4 +181,58 @@ export const IPA_VOWEL_MAP: Record<string, { height: string; backness: string; r
     "ä": { height: "Open", backness: "Central", rounded: false },
     "ɑ": { height: "Open", backness: "Back", rounded: false },
     "ɒ": { height: "Open", backness: "Back", rounded: true },
+}
+
+/** A single consonant-chart cell: the voiceless and voiced phonemes at one
+ * place + manner. Each is a list so a base and its diacritic variants
+ * (e.g. t and tʰ) can coexist instead of overwriting each other. */
+export interface ConsonantCell {
+    voiceless: string[]
+    voiced: string[]
+}
+
+export interface ConsonantChartData {
+    chart: Record<string, Record<string, ConsonantCell>>
+    places: string[]
+    manners: string[]
+}
+
+/**
+ * Group IPA consonant symbols into a place × manner chart. Symbols are matched
+ * by their diacritic-stripped base (via getBaseIpa), so diacriticized phonemes
+ * (tʰ, kʷ, dʲ …) land in the same cell as their base letter without displacing
+ * it. Within a cell, voiceless and voiced are kept separate and each list is
+ * sorted with the shortest (base) symbol first. Non-consonants are ignored.
+ */
+export function buildConsonantChart(symbols: Iterable<string>): ConsonantChartData {
+    const chart: Record<string, Record<string, ConsonantCell>> = {}
+    const usedPlaces = new Set<string>()
+    const usedManners = new Set<string>()
+
+    for (const ipa of symbols) {
+        const info = IPA_CONSONANT_MAP[ipa] ?? IPA_CONSONANT_MAP[getBaseIpa(ipa)]
+        if (!info) continue
+
+        usedPlaces.add(info.place)
+        usedManners.add(info.manner)
+
+        const manner = (chart[info.manner] ??= {})
+        const cell = (manner[info.place] ??= { voiceless: [], voiced: [] })
+        const bucket = info.voiced ? cell.voiced : cell.voiceless
+        if (!bucket.includes(ipa)) bucket.push(ipa)
+    }
+
+    const byBaseFirst = (a: string, b: string) => a.length - b.length || a.localeCompare(b)
+    for (const places of Object.values(chart)) {
+        for (const cell of Object.values(places)) {
+            cell.voiceless.sort(byBaseFirst)
+            cell.voiced.sort(byBaseFirst)
+        }
+    }
+
+    return {
+        chart,
+        places: CONSONANT_PLACES.filter((p) => usedPlaces.has(p)),
+        manners: CONSONANT_MANNERS.filter((m) => usedManners.has(m)),
+    }
 }

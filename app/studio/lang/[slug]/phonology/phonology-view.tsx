@@ -28,12 +28,13 @@ import {
 import { updateLanguage } from "@/app/actions/language"
 import { IPAKeyboard } from "@/components/ipa-keyboard"
 import {
-    CONSONANT_PLACES,
-    CONSONANT_MANNERS,
     IPA_CONSONANT_MAP,
     VOWEL_HEIGHTS,
     VOWEL_BACKNESS,
     IPA_VOWEL_MAP,
+    getBaseIpa,
+    getPhonemeKind,
+    buildConsonantChart,
 } from "@/lib/data/ipa-data"
 import { languageMetadataSchema } from "@/lib/validations/language"
 import type { Language, ScriptSymbol } from "@prisma/client"
@@ -124,7 +125,7 @@ export function PhonologyView({ language, symbols }: PhonologyViewProps) {
     }, [])
 
     const handleRemovePhoneme = useCallback((ipa: string) => {
-        const base = ipa.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        const base = getBaseIpa(ipa)
         if (IPA_CONSONANT_MAP[ipa] || IPA_CONSONANT_MAP[base]) {
             setCustomConsonants(prev => prev.filter(s => s !== ipa))
         }
@@ -134,66 +135,32 @@ export function PhonologyView({ language, symbols }: PhonologyViewProps) {
     }, [])
 
     const handleAddPhoneme = useCallback((symbol: string) => {
-        // Normalize affricate tie bars and chart wrappers for lookup
+        // Strip chart wrappers and affricate tie bars; the full symbol
+        // (diacritics included) is stored. getPhonemeKind tolerates diacritics
+        // written as combining marks (ɑ̃) or modifier letters (tʰ, kʷ, aː).
         const cleaned = symbol
             .replace(/[\/\[\]]/g, "")
-            .replace(/[\u0361\u035C]/g, "")
+            .replace(/[͜͡]/g, "")
             .trim()
-        // For diacritic symbols not directly in the map (e.g. ɑ̃), fall back to
-        // the base character for classification while storing the full symbol.
-        const base = cleaned.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-
-        const isConsonant = !!IPA_CONSONANT_MAP[cleaned] || (!IPA_VOWEL_MAP[cleaned] && !!IPA_CONSONANT_MAP[base])
-        const isVowel = !!IPA_VOWEL_MAP[cleaned] || (!IPA_CONSONANT_MAP[cleaned] && !!IPA_VOWEL_MAP[base])
-
-        if (addingTo === "consonants" && isConsonant) {
+        const kind = getPhonemeKind(cleaned)
+        if (kind === "consonant") {
             setCustomConsonants(prev => prev.includes(cleaned) ? prev : [...prev, cleaned])
-        } else if (addingTo === "vowels" && isVowel) {
-            setCustomVowels(prev => prev.includes(cleaned) ? prev : [...prev, cleaned])
-        } else if (isConsonant) {
-            setCustomConsonants(prev => prev.includes(cleaned) ? prev : [...prev, cleaned])
-        } else if (isVowel) {
+        } else if (kind === "vowel") {
             setCustomVowels(prev => prev.includes(cleaned) ? prev : [...prev, cleaned])
         } else {
             toast.error(t("unrecognizedSymbol"))
         }
-    }, [addingTo])
+    }, [t])
 
-    // Build consonant chart data
-    const consonantChart = useMemo(() => {
-        const chart: Record<string, Record<string, { voiceless?: string; voiced?: string }>> = {}
-        const usedPlaces = new Set<string>()
-        const usedManners = new Set<string>()
-
-        ipaSymbols.forEach((ipa) => {
-            const base = ipa.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-            const info = IPA_CONSONANT_MAP[ipa] ?? IPA_CONSONANT_MAP[base]
-            if (info) {
-                usedPlaces.add(info.place)
-                usedManners.add(info.manner)
-                if (!chart[info.manner]) chart[info.manner] = {}
-                if (!chart[info.manner][info.place]) chart[info.manner][info.place] = {}
-                if (info.voiced) {
-                    chart[info.manner][info.place].voiced = ipa
-                } else {
-                    chart[info.manner][info.place].voiceless = ipa
-                }
-            }
-        })
-
-        return {
-            chart,
-            places: CONSONANT_PLACES.filter((p) => usedPlaces.has(p)),
-            manners: CONSONANT_MANNERS.filter((m) => usedManners.has(m)),
-        }
-    }, [ipaSymbols])
+    // Build consonant chart data (each cell may hold a base and its variants)
+    const consonantChart = useMemo(() => buildConsonantChart(ipaSymbols), [ipaSymbols])
 
     // Build vowel chart data
     const vowelChart = useMemo(() => {
         const vowels: Array<{ ipa: string; height: string; backness: string; rounded: boolean }> = []
 
         ipaSymbols.forEach((ipa) => {
-            const base = ipa.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            const base = getBaseIpa(ipa)
             const info = IPA_VOWEL_MAP[ipa] ?? IPA_VOWEL_MAP[base]
             if (info) {
                 vowels.push({ ipa, ...info })
@@ -231,11 +198,11 @@ export function PhonologyView({ language, symbols }: PhonologyViewProps) {
     }
 
     const consonantCount = Array.from(ipaSymbols).filter((s) => {
-        const b = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        const b = getBaseIpa(s)
         return IPA_CONSONANT_MAP[s] || IPA_CONSONANT_MAP[b]
     }).length
     const vowelCount = Array.from(ipaSymbols).filter((s) => {
-        const b = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        const b = getBaseIpa(s)
         return IPA_VOWEL_MAP[s] || IPA_VOWEL_MAP[b]
     }).length
 
@@ -347,46 +314,43 @@ export function PhonologyView({ language, symbols }: PhonologyViewProps) {
                                                 </td>
                                                 {consonantChart.places.map((place) => {
                                                     const cell = consonantChart.chart[manner]?.[place]
+                                                    const items = cell
+                                                        ? [
+                                                              ...cell.voiceless.map((ipa) => ({ ipa, voiced: false })),
+                                                              ...cell.voiced.map((ipa) => ({ ipa, voiced: true })),
+                                                          ]
+                                                        : []
                                                     return (
                                                         <td
                                                             key={`${manner}-${place}`}
                                                             colSpan={2}
                                                             className="p-2 text-center"
                                                         >
-                                                            <div className="flex justify-center gap-3">
-                                                                {cell?.voiceless && (
-                                                                    <span className="font-ipa text-base text-foreground inline-flex items-center gap-1 group">
-                                                                        <span className="cursor-default hover:text-primary transition-colors" title={`${place} voiceless ${manner.toLowerCase()}`}>
-                                                                            {cell.voiceless}
-                                                                        </span>
-                                                                        {isEditing && (
-                                                                            <button
-                                                                                onClick={() => handleRemovePhoneme(cell.voiceless!)}
-                                                                                className="hover-reveal flex h-7 w-7 items-center justify-center text-destructive hover:text-destructive/80"
-                                                                                title={t("remove")}
+                                                            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+                                                                {items.length > 0 ? (
+                                                                    items.map(({ ipa, voiced }) => (
+                                                                        <span
+                                                                            key={ipa}
+                                                                            className="font-ipa text-base text-foreground inline-flex items-center gap-1 group"
+                                                                        >
+                                                                            <span
+                                                                                className="cursor-default hover:text-primary transition-colors"
+                                                                                title={`${place} ${voiced ? "voiced" : "voiceless"} ${manner.toLowerCase()}`}
                                                                             >
-                                                                                <X className="h-3 w-3" />
-                                                                            </button>
-                                                                        )}
-                                                                    </span>
-                                                                )}
-                                                                {cell?.voiced && (
-                                                                    <span className="font-ipa text-base text-foreground inline-flex items-center gap-1 group">
-                                                                        <span className="cursor-default hover:text-primary transition-colors" title={`${place} voiced ${manner.toLowerCase()}`}>
-                                                                            {cell.voiced}
+                                                                                {ipa}
+                                                                            </span>
+                                                                            {isEditing && (
+                                                                                <button
+                                                                                    onClick={() => handleRemovePhoneme(ipa)}
+                                                                                    className="hover-reveal flex h-7 w-7 items-center justify-center text-destructive hover:text-destructive/80"
+                                                                                    title={t("remove")}
+                                                                                >
+                                                                                    <X className="h-3 w-3" />
+                                                                                </button>
+                                                                            )}
                                                                         </span>
-                                                                        {isEditing && (
-                                                                            <button
-                                                                                onClick={() => handleRemovePhoneme(cell.voiced!)}
-                                                                                className="hover-reveal flex h-7 w-7 items-center justify-center text-destructive hover:text-destructive/80"
-                                                                                title={t("remove")}
-                                                                            >
-                                                                                <X className="h-3 w-3" />
-                                                                            </button>
-                                                                        )}
-                                                                    </span>
-                                                                )}
-                                                                {!cell && (
+                                                                    ))
+                                                                ) : (
                                                                     <span className="text-muted-foreground/20">·</span>
                                                                 )}
                                                             </div>
